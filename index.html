@@ -100,15 +100,34 @@ body {
 .ct-stamp { width: 50px; height: 50px; flex: none; transform: rotate(-9deg); }
 .ct-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 6px; }
 .ct-vsep { width: 1.5px; height: 30px; background: var(--green); }
-.ct-theme { display: inline-flex; border: 1.5px solid var(--outline); border-radius: 3px; overflow: hidden; }
-.ct-theme button {
+.ct-theme, .ct-switch { display: inline-flex; border: 1.5px solid var(--outline); border-radius: 3px; overflow: hidden; }
+.ct-theme button, .ct-switch button {
   font-family: var(--font-body); font-weight: 600; font-size: 13px; color: var(--ink);
   background: transparent; border: 0; padding: 7px 11px; cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px;
 }
-.ct-theme button + button { border-left: 1.5px solid var(--outline); }
-.ct-theme button svg { width: 14px; height: 14px; }
+.ct-theme button + button, .ct-switch button + button { border-left: 1.5px solid var(--outline); }
+.ct-theme button svg, .ct-switch button svg { width: 14px; height: 14px; }
 .ct-theme button[aria-pressed="true"] { background: var(--ink); color: var(--canvas); }
+.ct-switch button[aria-pressed="true"] { background: var(--green); color: var(--green-ink); }
+.ct-switch button:disabled { cursor: default; }
+.ct-statusrow { display: flex; align-items: center; gap: 10px 20px; flex-wrap: wrap; }
+.ct-vis { display: inline-flex; align-items: center; gap: 10px; }
+.ct-vis-label {
+  font-family: var(--font-display); font-weight: 600; font-size: 11.5px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted);
+}
+.ct-switch button { padding: 5px 10px; font-size: 12.5px; }
+.ct-private {
+  background: var(--surface); border: 1.5px solid var(--outline); border-radius: 44px 44px 4px 4px;
+  box-shadow: 6px 6px 0 var(--yellow); padding: 40px 24px 32px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  width: calc(100% - 6px); max-width: 560px; margin: 28px auto 12px;
+}
+.ct-private .ct-stamp { width: 48px; height: 48px; }
+.ct-private h2 { font-family: var(--font-display); font-weight: 700; font-size: 28px; letter-spacing: -0.025em; margin: 0; text-wrap: balance; }
+.ct-private p { margin: 0 0 6px; color: var(--ink-2); max-width: 42ch; }
+.is-locked .ct-tabsrow, .is-locked .ct-view { display: none !important; }
 .ct-theme button:focus-visible { outline-offset: -4px; }
 
 .ct-sync {
@@ -369,6 +388,7 @@ body {
 }
 @media (max-width: 760px) {
   .ct-app { margin: 0; border-radius: 0; border: 0; padding: 22px 16px 80px; box-shadow: none; gap: 18px; }
+  body { background: var(--canvas); }
   .ct-tablewrap { display: none; }
   .ct-cards { display: flex; }
   .ct-in, .ct-sel, .ct-ta { font-size: 16px; }
@@ -404,7 +424,16 @@ body {
         <h1>Content Tracker</h1>
         <svg class="ct-stamp" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><polygon points="3.0,3.0 5.3,5.2 7.7,3.0 10.0,5.2 12.3,3.0 14.7,5.2 17.0,3.0 19.3,5.2 21.7,3.0 24.0,5.2 26.3,3.0 28.7,5.2 31.0,3.0 33.3,5.2 35.7,3.0 38.0,5.2 40.3,3.0 42.7,5.2 45.0,3.0 42.8,5.3 45.0,7.7 42.8,10.0 45.0,12.3 42.8,14.7 45.0,17.0 42.8,19.3 45.0,21.7 42.8,24.0 45.0,26.3 42.8,28.7 45.0,31.0 42.8,33.3 45.0,35.7 42.8,38.0 45.0,40.3 42.8,42.7 45.0,45.0 42.7,42.8 40.3,45.0 38.0,42.8 35.7,45.0 33.3,42.8 31.0,45.0 28.7,42.8 26.3,45.0 24.0,42.8 21.7,45.0 19.3,42.8 17.0,45.0 14.7,42.8 12.3,45.0 10.0,42.8 7.7,45.0 5.3,42.8 3.0,45.0 5.2,42.7 3.0,40.3 5.2,38.0 3.0,35.7 5.2,33.3 3.0,31.0 5.2,28.7 3.0,26.3 5.2,24.0 3.0,21.7 5.2,19.3 3.0,17.0 5.2,14.7 3.0,12.3 5.2,10.0 3.0,7.7 5.2,5.3" style="fill:var(--red)"/><g style="stroke:var(--stamp-ink)" stroke-width="3.6" stroke-linecap="round"><line x1="13.0" y1="24.0" x2="35.0" y2="24.0"/><line x1="16.2" y1="16.2" x2="31.8" y2="31.8"/><line x1="24.0" y1="13.0" x2="24.0" y2="35.0"/><line x1="31.8" y1="16.2" x2="16.2" y2="31.8"/></g><circle cx="24" cy="24" r="4.2" style="fill:var(--stamp-ink)"/></svg>
       </div>
-      <span id="sync" class="ct-sync">Connecting</span>
+      <div class="ct-statusrow">
+        <span id="sync" class="ct-sync">Connecting</span>
+        <div id="visCtl" class="ct-vis" hidden>
+          <span class="ct-vis-label" id="visLabel">Who can see it</span>
+          <div class="ct-switch" role="group" aria-labelledby="visLabel">
+            <button type="button" data-vis="private" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g style="fill:none;stroke:currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></g></svg>Only me</button>
+            <button type="button" data-vis="public" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g style="fill:none;stroke:currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></g></svg>Everyone</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="ct-actions">
       <div class="ct-theme" role="group" aria-label="Theme">
@@ -429,6 +458,13 @@ body {
   </div>
 
   <div id="banner" class="ct-banner" hidden></div>
+
+  <section id="privateNote" class="ct-private" hidden aria-labelledby="privateTitle">
+    <svg class="ct-stamp" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><polygon points="3.0,3.0 5.3,5.2 7.7,3.0 10.0,5.2 12.3,3.0 14.7,5.2 17.0,3.0 19.3,5.2 21.7,3.0 24.0,5.2 26.3,3.0 28.7,5.2 31.0,3.0 33.3,5.2 35.7,3.0 38.0,5.2 40.3,3.0 42.7,5.2 45.0,3.0 42.8,5.3 45.0,7.7 42.8,10.0 45.0,12.3 42.8,14.7 45.0,17.0 42.8,19.3 45.0,21.7 42.8,24.0 45.0,26.3 42.8,28.7 45.0,31.0 42.8,33.3 45.0,35.7 42.8,38.0 45.0,40.3 42.8,42.7 45.0,45.0 42.7,42.8 40.3,45.0 38.0,42.8 35.7,45.0 33.3,42.8 31.0,45.0 28.7,42.8 26.3,45.0 24.0,42.8 21.7,45.0 19.3,42.8 17.0,45.0 14.7,42.8 12.3,45.0 10.0,42.8 7.7,45.0 5.3,42.8 3.0,45.0 5.2,42.7 3.0,40.3 5.2,38.0 3.0,35.7 5.2,33.3 3.0,31.0 5.2,28.7 3.0,26.3 5.2,24.0 3.0,21.7 5.2,19.3 3.0,17.0 5.2,14.7 3.0,12.3 5.2,10.0 3.0,7.7 5.2,5.3" style="fill:var(--red)"/><g style="stroke:var(--stamp-ink)" stroke-width="3.6" stroke-linecap="round"><line x1="13.0" y1="24.0" x2="35.0" y2="24.0"/><line x1="16.2" y1="16.2" x2="31.8" y2="31.8"/><line x1="24.0" y1="13.0" x2="24.0" y2="35.0"/><line x1="31.8" y1="16.2" x2="16.2" y2="31.8"/></g><circle cx="24" cy="24" r="4.2" style="fill:var(--stamp-ink)"/></svg>
+    <h2 id="privateTitle">This tracker is private right now</h2>
+    <p>Its owner has made it visible only to themselves for the moment.</p>
+    <button id="privateLogin" class="ct-btn primary" type="button">Log in</button>
+  </section>
 
   <!-- LOG -->
   <section id="view-log" class="ct-view" role="tabpanel" aria-labelledby="tab-log">
@@ -710,6 +746,8 @@ body {
     readOnly: true,
     isAdmin: false,
     session: null,
+    isPublic: null,        // null until known; true when the database has no private switch yet
+    visAvailable: false,   // the private switch exists in the database
     pending: 0,
     editingId: null,
     tab: 'log'
@@ -814,6 +852,7 @@ body {
     else if (state.conn === 'error') { text = 'Can’t load'; cls += ' is-warn'; }
     else if (state.conn === 'stale') { text = 'Can’t reach database'; cls += ' is-warn'; }
     else if (state.conn === 'connecting') { text = 'Connecting'; }
+    else if (isLocked()) { text = 'Private'; }
     else if (state.pending > 0) { text = 'Saving'; }
     else { text = state.isAdmin ? 'Live · editing' : 'Live'; cls += ' is-live'; }
     el.className = cls; el.textContent = text;
@@ -1549,9 +1588,14 @@ body {
     loading = true;
     Promise.all([
       sb.from('tracker_config').select('data').eq('id', 'options').maybeSingle(),
-      sb.from('entries').select('*').order('created_at', { ascending: false }).range(0, 4999)
+      sb.from('entries').select('*').order('created_at', { ascending: false }).range(0, 4999),
+      sb.from('tracker_settings').select('is_public').eq('id', 1).maybeSingle()
     ]).then(function (res) {
       check(res[0]); check(res[1]);
+      // No settings table yet (private-mode.sql not run): behave as before, public.
+      if (res[2] && res[2].error) { state.visAvailable = false; state.isPublic = true; }
+      else { state.visAvailable = true; state.isPublic = !!(res[2] && res[2].data && res[2].data.is_public); }
+      applyVisibility();
       if (!cfgWriting) state.cfg = normCfg(res[0].data ? res[0].data.data : {});
       state.entries = (res[1].data || []).map(fromRow);
       state.entriesLoaded = true;
@@ -1583,6 +1627,7 @@ body {
       sb.channel('content-tracker')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, scheduleReload)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'tracker_config' }, scheduleReload)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tracker_settings' }, scheduleReload)
         .subscribe(function (status) { if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') startPolling(); });
     } catch (_) { startPolling(); }
     document.addEventListener('visibilitychange', function () { if (!document.hidden) scheduleReload(); });
@@ -1597,19 +1642,45 @@ body {
     var seq = ++authSeq;
     $('loginBtn').hidden = !!session;
     $('logoutBtn').hidden = !session;
-    if (!session) { setAdmin(false); return; }
+    if (!session) { setAdmin(false); scheduleReload(); return; }
     sb.rpc('is_admin').then(function (res) {
       if (seq !== authSeq) return;
       var ok = !res.error && res.data === true;
       setAdmin(ok);
+      scheduleReload();
       if (!ok) toast('This account can browse the tracker but not change it.');
     }, function () { if (seq === authSeq) setAdmin(false); });
   }
   function setAdmin(on) {
-    if (state.isAdmin === on && state.readOnly === !on) return;
+    if (state.isAdmin === on && state.readOnly === !on) { applyVisibility(); return; }
     state.isAdmin = on;
     if (!on && !$('overlay').hidden) closeEditor();
     setReadOnly(!on);
+    applyVisibility();
+  }
+
+  /* ---------- Private / public ---------- */
+  function isLocked() { return state.isPublic === false && !state.isAdmin; }
+  function applyVisibility() {
+    var locked = isLocked();
+    document.body.classList.toggle('is-locked', locked);
+    $('privateNote').hidden = !locked;
+    $('privateLogin').hidden = !!state.session;
+    $('visCtl').hidden = !(state.isAdmin && state.visAvailable && state.isPublic !== null);
+    Array.prototype.forEach.call(document.querySelectorAll('#visCtl button'), function (b) {
+      var on = b.getAttribute('data-vis') === (state.isPublic ? 'public' : 'private');
+      b.setAttribute('aria-pressed', String(on));
+    });
+    if (locked && !$('overlay').hidden) closeEditor();
+    updateSync();
+  }
+  function setVisibility(pub) {
+    if (!sb || !state.isAdmin || !state.visAvailable || state.isPublic === pub) return;
+    var prev = state.isPublic;
+    state.isPublic = pub; applyVisibility();
+    write(function () { return sb.from('tracker_settings').update({ is_public: pub }).eq('id', 1).select('id'); }, true).then(function () {
+      toast(pub ? 'Everyone can see the tracker now.' : 'Only you can see the tracker now.');
+    }, function (e) { state.isPublic = prev; applyVisibility(); handleWriteError(e); });
   }
 
   function openLogin() {
@@ -1623,7 +1694,8 @@ body {
     $('loginOverlay').hidden = true;
     document.body.style.overflow = '';
     $('l_pass').value = '';
-    $('loginBtn').focus();
+    var back = !$('loginBtn').hidden ? $('loginBtn') : $('addBtn');
+    if (back && !back.hidden) back.focus();
   }
   function onLogin(ev) {
     ev.preventDefault();
@@ -1681,6 +1753,10 @@ body {
     else if (!$('loginOverlay').hidden) closeLogin();
   });
   $('loginBtn').addEventListener('click', openLogin);
+  $('privateLogin').addEventListener('click', openLogin);
+  Array.prototype.forEach.call(document.querySelectorAll('#visCtl button'), function (b) {
+    b.addEventListener('click', function () { setVisibility(b.getAttribute('data-vis') === 'public'); });
+  });
   $('logoutBtn').addEventListener('click', function () { if (sb) sb.auth.signOut().then(function () { toast('Logged out.'); }); });
   $('loginForm').addEventListener('submit', onLogin);
   $('loginCancel').addEventListener('click', closeLogin);
