@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Content Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>try{var t=localStorage.getItem("ct-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-ct-theme",t);}catch(e){}</script>
+<style>
+/* Layout idea: a cream sheet on a stone page, like a printed playbook. Bold grotesk headings, square buttons,
+   ink outlines with hard colored offset shadows on the key blocks, a red stamp and squiggle as accents. */
+:root {
+  --page: #ebe8e1;
+  --canvas: #fffbf2;
+  --surface: #fffdf8;
+  --surface-2: #f6f0e3;
+  --ink: #1d1c1a;
+  --ink-2: #47443e;
+  --muted: #74706a;
+  --line: #e4dccb;
+  --outline: #1d1c1a;
+  --track: #efe8d8;
+  --green: #21835a;
+  --green-ink: #ffffff;
+  --green-text: #1f7c55;
+  --red: #d6412a;
+  --red-ink: #ffffff;
+  --red-text: #c93c24;
+  --stamp-ink: #fffbf2;
+  --yellow: #f9cf5b;
+  --yellow-soft: #fdeeb8;
+  --lavender: #bcb8f2;
+  --bar-single: #2b2925;
+  --on-cat: #1d1c1a;
+  --c1: #1f9d6b; --c2: #e0a000; --c3: #e5482e; --c4: #6f63db;
+  --c5: #2a78d6; --c6: #e87ba4; --c7: #1baf7a; --c8: #8a5a3c;
+  --f1: #b5ad9e; --f2: #7d7567; --f3: #262420;
+  --font-display: "Familjen Grotesk", "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sheet-shadow: 0 40px 80px -40px rgb(70 58 30 / .28);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-ct-theme="light"]) {
+    --page: #0c0c0b; --canvas: #161512; --surface: #1c1b18; --surface-2: #23211d;
+    --ink: #f6f1e6; --ink-2: #d2cbbd; --muted: #9c9586; --line: #35322c; --outline: #d9d1c1; --track: #2b2924;
+    --green: #3dbf84; --green-ink: #0f1a14; --green-text: #4fcb91;
+    --red: #e8563d; --red-ink: #1a0f0b; --red-text: #f06449; --stamp-ink: #161512;
+    --yellow: #f2c94c; --yellow-soft: #3a3120; --lavender: #8f89e6; --bar-single: #e9e2d3; --on-cat: #161512;
+    --c1: #26a872; --c2: #b88b00; --c3: #cc3d2e; --c4: #857ce6;
+    --c5: #3987e5; --c6: #d55181; --c7: #199e70; --c8: #a87454;
+    --f1: #5a554b; --f2: #9c9486; --f3: #ece6d8;
+    --sheet-shadow: none;
+    color-scheme: dark;
+  }
+}
+:root[data-ct-theme="dark"],
+:root[data-theme="dark"]:not([data-ct-theme="light"]) {
+  --page: #0c0c0b; --canvas: #161512; --surface: #1c1b18; --surface-2: #23211d;
+  --ink: #f6f1e6; --ink-2: #d2cbbd; --muted: #9c9586; --line: #35322c; --outline: #d9d1c1; --track: #2b2924;
+  --green: #3dbf84; --green-ink: #0f1a14; --green-text: #4fcb91;
+  --red: #e8563d; --red-ink: #1a0f0b; --red-text: #f06449; --stamp-ink: #161512;
+  --yellow: #f2c94c; --yellow-soft: #3a3120; --lavender: #8f89e6; --bar-single: #e9e2d3; --on-cat: #161512;
+  --c1: #26a872; --c2: #b88b00; --c3: #cc3d2e; --c4: #857ce6;
+  --c5: #3987e5; --c6: #d55181; --c7: #199e70; --c8: #a87454;
+  --f1: #5a554b; --f2: #9c9486; --f3: #ece6d8;
+  --sheet-shadow: none;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--green-text); outline-offset: 2px; }
+
+.ct-app {
+  max-width: 1240px; margin: 28px auto; padding: 40px 48px 72px;
+  background: var(--canvas); border-radius: 18px; border: 1px solid var(--line);
+  box-shadow: var(--sheet-shadow);
+  display: flex; flex-direction: column; gap: 22px;
+}
+
+/* Header */
+.ct-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px 24px; flex-wrap: wrap; }
+.ct-brand { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.ct-titlewrap { display: flex; align-items: center; gap: 16px; }
+.ct-brand h1 {
+  font-family: var(--font-display); font-weight: 700; font-size: clamp(34px, 4.8vw, 58px);
+  line-height: 1.02; letter-spacing: -0.035em; margin: 0; text-wrap: balance;
+}
+.ct-stamp { width: 50px; height: 50px; flex: none; transform: rotate(-9deg); }
+.ct-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 6px; }
+.ct-vsep { width: 1.5px; height: 30px; background: var(--green); }
+.ct-theme { display: inline-flex; border: 1.5px solid var(--outline); border-radius: 3px; overflow: hidden; }
+.ct-theme button {
+  font-family: var(--font-body); font-weight: 600; font-size: 13px; color: var(--ink);
+  background: transparent; border: 0; padding: 7px 11px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.ct-theme button + button { border-left: 1.5px solid var(--outline); }
+.ct-theme button svg { width: 14px; height: 14px; }
+.ct-theme button[aria-pressed="true"] { background: var(--ink); color: var(--canvas); }
+.ct-theme button:focus-visible { outline-offset: -4px; }
+
+.ct-sync {
+  font-family: var(--font-display); font-weight: 600; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; align-self: flex-start;
+}
+.ct-sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.ct-sync.is-live::before { background: var(--green); }
+.ct-sync.is-warn { color: var(--red-text); }
+.ct-sync.is-warn::before { background: var(--red); }
+
+/* Tabs */
+.ct-tabsrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; border-bottom: 1.5px solid var(--line); }
+.ct-tabs { display: flex; gap: 4px; overflow: visible; }
+.ct-tab {
+  font-family: var(--font-body); font-weight: 600; font-size: 15.5px; color: var(--ink-2);
+  background: none; border: 0; padding: 10px 16px 13px; cursor: pointer; position: relative; white-space: nowrap;
+}
+.ct-tab:hover { color: var(--ink); }
+.ct-tab[aria-selected="true"] { color: var(--ink); }
+.ct-tab[aria-selected="true"]::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1.5px; height: 4px; background: var(--green); }
+.ct-squiggle { width: 94px; height: 34px; flex: none; margin: 0 4px 8px 0; }
+
+.ct-banner {
+  background: var(--yellow-soft); color: var(--ink); border: 1.5px solid var(--outline); border-radius: 3px;
+  padding: 12px 16px; font-size: 14.5px; box-shadow: 4px 4px 0 var(--yellow);
+}
+.ct-view { display: flex; flex-direction: column; gap: 18px; }
+.ct-view[hidden] { display: none; }
+
+/* Buttons */
+.ct-btn {
+  font-family: var(--font-body); font-weight: 600; font-size: 14.5px; line-height: 1.2;
+  padding: 10px 18px; border-radius: 3px; border: 1.5px solid var(--outline);
+  background: var(--surface); color: var(--ink); cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+}
+.ct-btn:hover { box-shadow: 3px 3px 0 var(--outline); }
+.ct-btn.primary { background: var(--green); border-color: var(--green); color: var(--green-ink); padding: 12px 24px; }
+.ct-btn.primary:hover { box-shadow: 4px 4px 0 var(--outline); }
+.ct-btn.ghost { background: transparent; border-color: transparent; color: var(--green-text); padding-left: 6px; padding-right: 6px; }
+.ct-btn.ghost:hover { box-shadow: none; text-decoration: underline; text-underline-offset: 3px; }
+.ct-btn.ct-learn { color: var(--red-text); padding: 4px 6px 4px 0; }
+.ct-arrowbox { width: 32px; height: 32px; background: var(--red); color: var(--red-ink); display: grid; place-items: center; border-radius: 2px; flex: none; }
+.ct-arrowbox svg { width: 16px; height: 16px; }
+.ct-btn.danger { color: var(--red-text); }
+.ct-btn.danger.confirming { background: var(--red); color: var(--red-ink); border-color: var(--red); text-decoration: none; }
+.ct-btn.small { padding: 8px 12px; font-size: 14px; }
+.ct-btn:disabled { opacity: .55; cursor: default; box-shadow: none; }
+
+/* Fields */
+.ct-in, .ct-sel, .ct-ta {
+  font-family: var(--font-body); font-size: 14.5px; color: var(--ink); background: var(--surface);
+  border: 1.5px solid var(--line); border-radius: 3px; padding: 9px 11px; min-width: 0; width: 100%;
+}
+.ct-ta { resize: vertical; line-height: 1.45; }
+.ct-in:hover, .ct-sel:hover, .ct-ta:hover { border-color: var(--muted); }
+.ct-in:focus, .ct-sel:focus, .ct-ta:focus { outline: none; border-color: var(--outline); box-shadow: 3px 3px 0 var(--green); }
+.ct-in:disabled, .ct-sel:disabled, .ct-ta:disabled { opacity: .7; }
+.ct-in::placeholder, .ct-ta::placeholder { color: var(--muted); }
+
+/* Summary + filters */
+.ct-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; font-size: 15px; color: var(--ink-2); }
+.ct-summary b { color: var(--ink); font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; }
+.ct-flegend { display: inline-flex; gap: 16px; flex-wrap: wrap; }
+.ct-fitem { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); font-weight: 600; font-size: 12.5px; letter-spacing: .05em; color: var(--ink-2); }
+.ct-sq { display: inline-block; width: 10px; height: 10px; border-radius: 2px; flex: none; }
+
+.ct-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ct-filters .ct-in[type="search"] { flex: 1 1 260px; width: auto; }
+.ct-filters .ct-sel { width: auto; flex: 0 1 auto; max-width: 220px; }
+.ct-count { font-size: 13px; color: var(--muted); font-family: var(--font-display); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.ct-csvbox { display: flex; flex-direction: column; gap: 6px; }
+.ct-csvbox[hidden] { display: none; }
+
+/* Table */
+.ct-tablewrap { overflow-x: auto; background: var(--surface); border: 1.5px solid var(--outline); border-radius: 4px; box-shadow: 6px 6px 0 var(--green); margin-right: 6px; }
+.ct-table { border-collapse: collapse; width: 100%; min-width: 1120px; font-size: 14px; }
+.ct-table th {
+  text-align: left; font-family: var(--font-display); font-weight: 700; color: var(--ink-2); font-size: 11.5px;
+  text-transform: uppercase; letter-spacing: .07em; padding: 12px 14px; border-bottom: 1.5px solid var(--outline);
+  white-space: nowrap; background: var(--surface-2);
+}
+.ct-table td { padding: 13px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ct-table tbody tr:last-child td { border-bottom: 0; }
+.ct-table tbody tr { cursor: pointer; }
+.ct-table tbody tr:hover, .ct-table tbody tr:focus-visible { background: var(--surface-2); }
+.ct-table tbody tr:focus-visible { outline-offset: -3px; }
+.ct-table td.c-title { min-width: 200px; max-width: 260px; border-left: 5px solid var(--cat, transparent); }
+.ct-table td.c-value { min-width: 240px; max-width: 360px; color: var(--ink-2); }
+.ct-table td.c-cat { min-width: 230px; max-width: 300px; }
+.ct-table td.num, .ct-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ct-t { font-weight: 700; color: var(--ink); font-family: var(--font-display); font-size: 15px; line-height: 1.3; }
+.ct-small { font-size: 12.5px; }
+.ct-muted { color: var(--muted); }
+
+.ct-catlbl { display: inline-flex; align-items: baseline; gap: 8px; }
+.ct-chip { display: inline-block; width: 10px; height: 10px; border-radius: 2px; flex: none; transform: translateY(1px); }
+.ct-ftag {
+  display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); font-weight: 700;
+  font-size: 11.5px; letter-spacing: .06em; padding: 3px 8px; border: 1.5px solid var(--line); border-radius: 2px;
+  white-space: nowrap; color: var(--ink-2); background: var(--surface);
+}
+.ct-pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 2px; white-space: nowrap; border: 1.5px solid var(--outline); color: var(--ink); background: transparent; }
+.ct-pill.s-scripted { background: var(--yellow); border-color: var(--yellow); color: #1d1c1a; }
+.ct-pill.s-filmed { background: var(--lavender); border-color: var(--lavender); color: #1d1c1a; }
+.ct-pill.s-posted { background: var(--green); border-color: var(--green); color: var(--green-ink); }
+.ct-links { display: flex; flex-direction: column; gap: 3px; }
+.ct-links a { color: var(--green-text); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; word-break: break-word; }
+
+/* Cards (phone) */
+.ct-cards { display: none; flex-direction: column; gap: 16px; padding-right: 5px; }
+.ct-item {
+  background: var(--surface); border: 1.5px solid var(--outline); border-radius: 4px;
+  box-shadow: 5px 5px 0 var(--cat, var(--line));
+  padding: 15px 16px; display: flex; flex-direction: column; gap: 9px; cursor: pointer;
+}
+.ct-item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.ct-item h3 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; }
+.ct-item-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 13.5px; }
+.ct-item-value { margin: 0; color: var(--ink-2); font-size: 14.5px; }
+.ct-dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; margin: 0; font-size: 13.5px; }
+.ct-dl dt { color: var(--muted); }
+.ct-dl dd { margin: 0; }
+
+.ct-empty {
+  background: var(--surface); border: 1.5px dashed var(--outline); border-radius: 4px; padding: 36px 22px;
+  text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--ink-2);
+}
+.ct-empty[hidden] { display: none; }
+.ct-empty .ct-stamp { width: 44px; height: 44px; }
+.ct-empty h2 { font-family: var(--font-display); font-weight: 700; font-size: 24px; letter-spacing: -0.02em; margin: 0; color: var(--ink); }
+.ct-empty p { margin: 0; max-width: 52ch; }
+
+/* Mix */
+.ct-mixbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.ct-mixbar label { font-size: 13px; font-weight: 600; color: var(--ink-2); display: inline-flex; gap: 8px; align-items: center; }
+.ct-mixbar .ct-sel { width: auto; }
+.ct-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; padding: 0 6px 6px 0; }
+.ct-tile {
+  background: var(--surface); border: 1.5px solid var(--outline); border-radius: 44px 44px 4px 4px;
+  padding: 24px 20px 16px; display: flex; flex-direction: column; gap: 4px; box-shadow: 6px 6px 0 var(--tile, var(--green));
+}
+.ct-tile:nth-child(1) { --tile: var(--green); }
+.ct-tile:nth-child(2) { --tile: var(--red); }
+.ct-tile:nth-child(3) { --tile: var(--yellow); }
+.ct-tile:nth-child(4) { --tile: var(--lavender); }
+.ct-tile .n { font-family: var(--font-display); font-size: 38px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.ct-tile .l { font-size: 13px; color: var(--ink-2); }
+.ct-card { background: var(--surface); border: 1.5px solid var(--line); border-radius: 6px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ct-card h2 { margin: 0; font-family: var(--font-display); font-size: 19px; font-weight: 700; letter-spacing: -0.015em; }
+.ct-cardhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ct-cardhead .ct-sel { width: auto; }
+.ct-cardhead label { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.ct-hint { margin: 0; font-size: 13.5px; color: var(--muted); }
+.ct-nudge { margin: 0; font-size: 14px; font-weight: 600; color: var(--red-ink); background: var(--red); border-radius: 2px; padding: 12px 16px; }
+.ct-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 18px; }
+
+.ct-bars { display: flex; flex-direction: column; gap: 4px; }
+.ct-bar-row { display: grid; grid-template-columns: minmax(110px, 42%) 1fr 84px; gap: 12px; align-items: center; font-size: 14px; padding: 4px 0; }
+.ct-bar-label { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.ct-bar-label span { overflow-wrap: anywhere; }
+.ct-bar-track { height: 10px; background: var(--track); border-radius: 4px; overflow: hidden; }
+.ct-bar-fill { height: 100%; border-radius: 4px; min-width: 0; }
+.ct-bar-val { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-2); }
+.ct-bar-val b { color: var(--ink); font-family: var(--font-display); }
+.ct-bar-row.zero { color: var(--muted); }
+.ct-bar-row.zero .ct-bar-val { font-size: 12.5px; color: var(--muted); }
+.ct-subgroup { display: flex; flex-direction: column; gap: 2px; }
+.ct-subgroup + .ct-subgroup { border-top: 1.5px solid var(--line); padding-top: 12px; margin-top: 8px; }
+.ct-subgroup h3 { margin: 0 0 6px; font-family: var(--font-display); font-size: 15px; font-weight: 700; display: flex; align-items: baseline; gap: 8px; }
+
+.ct-seg { display: flex; gap: 2px; height: 28px; border: 1.5px solid var(--outline); border-radius: 3px; overflow: hidden; background: var(--surface); }
+.ct-seg-part { height: 100%; }
+.ct-seg-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ct-seg-item { display: flex; flex-direction: column; gap: 1px; font-size: 13px; color: var(--muted); }
+.ct-seg-item .top { display: flex; align-items: center; gap: 6px; font-family: var(--font-display); font-weight: 700; letter-spacing: .05em; color: var(--ink-2); font-size: 12px; }
+.ct-seg-item b { font-family: var(--font-display); font-size: 30px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.15; }
+
+.ct-recent { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; }
+.ct-rsq {
+  width: 34px; height: 44px; border-radius: 17px 17px 3px 3px; border: 1.5px solid var(--outline);
+  display: grid; place-items: end center; padding-bottom: 5px;
+  font-family: var(--font-display); font-weight: 700; font-size: 12px; color: var(--on-cat);
+}
+.ct-rsq.none { background: var(--track); color: var(--muted); }
+.ct-recent-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); }
+.ct-recent-legend span { display: inline-flex; align-items: center; gap: 7px; }
+
+.ct-perf { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+.ct-perf th { text-align: left; font-family: var(--font-display); font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); font-weight: 700; padding: 9px 10px; border-bottom: 1.5px solid var(--outline); white-space: nowrap; }
+.ct-perf td { padding: 10px; border-bottom: 1px solid var(--line); }
+.ct-perf tr:last-child td { border-bottom: 0; }
+.ct-perf .num { text-align: right; font-variant-numeric: tabular-nums; }
+.ct-perfwrap { overflow-x: auto; }
+
+/* Lists */
+.ct-catgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 22px; padding: 0 6px 6px 0; }
+.ct-catblock {
+  border: 1.5px solid var(--outline); border-radius: 4px; padding: 14px; display: flex; flex-direction: column; gap: 8px;
+  background: var(--surface); box-shadow: 5px 5px 0 var(--blockc, var(--line));
+}
+.ct-cathead { display: flex; gap: 10px; align-items: center; }
+.ct-cathead .ct-name { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+.ct-name { resize: none; overflow: hidden; min-height: 40px; field-sizing: content; }
+.ct-subrow { display: grid; grid-template-columns: 1fr 92px 38px; gap: 6px; align-items: start; }
+.ct-subrow.add { grid-template-columns: 1fr 92px auto; padding-top: 8px; border-top: 1.5px dashed var(--line); margin-top: 4px; }
+.ct-lirow { display: grid; grid-template-columns: 1fr 38px; gap: 6px; }
+.ct-lirow.add { grid-template-columns: 1fr auto; padding-top: 8px; border-top: 1.5px dashed var(--line); margin-top: 4px; }
+.ct-stack { display: flex; flex-direction: column; gap: 6px; }
+.ct-icon-btn {
+  height: 38px; min-width: 38px; border: 1.5px solid transparent; border-radius: 3px; background: transparent; color: var(--muted);
+  font-family: var(--font-body); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 8px; white-space: nowrap;
+}
+.ct-icon-btn:hover { border-color: var(--outline); color: var(--red-text); }
+.ct-icon-btn.confirming { font-size: 12.5px; font-weight: 700; color: var(--red-ink); background: var(--red); border-color: var(--red); }
+.ct-addcat { display: flex; gap: 10px; }
+.ct-addcat .ct-in { max-width: 360px; }
+
+/* Editor sheet */
+.ct-overlay { position: fixed; inset: 0; background: rgb(20 19 17 / .55); display: flex; align-items: flex-start; justify-content: center; padding: 32px 16px; overflow-y: auto; z-index: 30; }
+.ct-overlay[hidden] { display: none; }
+.ct-sheet {
+  background: var(--canvas); color: var(--ink); width: 100%; max-width: 740px;
+  border: 1.5px solid var(--outline); border-radius: 6px; box-shadow: 8px 8px 0 var(--green); margin-right: 8px;
+}
+.ct-sheet form { display: flex; flex-direction: column; }
+.ct-sheet-head { display: flex; justify-content: space-between; align-items: center; padding: 20px 22px 6px; gap: 10px; }
+.ct-sheet-head h2 { font-family: var(--font-display); font-weight: 700; font-size: 28px; margin: 0; letter-spacing: -0.03em; }
+.ct-sheet-body { padding: 10px 22px 16px; display: flex; flex-direction: column; gap: 14px; }
+.ct-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ct-field > label, .ct-perfset legend { font-size: 13px; font-weight: 700; color: var(--ink); }
+.ct-field .sub { font-weight: 400; color: var(--muted); }
+.ct-row { display: grid; gap: 12px; }
+.ct-row.r3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ct-row.r2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ct-perfset { border: 1.5px dashed var(--line); border-radius: 4px; padding: 10px 14px 14px; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.ct-perfset legend { padding: 0 4px; }
+.ct-row.r5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.ct-row.r5 label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.ct-sheet-foot { display: flex; gap: 10px; align-items: center; padding: 14px 22px 20px; border-top: 1.5px solid var(--line); flex-wrap: wrap; }
+.ct-sheet-foot .sp { flex: 1; }
+.ct-formerr { color: var(--red-text); font-size: 14px; font-weight: 600; margin: 0; }
+.ct-formerr:empty { display: none; }
+
+.ct-toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: var(--canvas);
+  padding: 11px 18px; border-radius: 3px; font-size: 14px; font-weight: 600; z-index: 40; max-width: calc(100% - 40px);
+  box-shadow: 4px 4px 0 var(--green);
+}
+.ct-toast[hidden] { display: none; }
+.is-ro #addBtn, .is-ro .ct-addonly { display: none; }
+.ct-sheet.sm { max-width: 460px; }
+.ct-who { font-size: 13px; color: var(--muted); }
+
+@media (max-width: 900px) {
+  .ct-app { margin: 16px; padding: 28px 24px 64px; }
+}
+@media (max-width: 760px) {
+  .ct-app { margin: 0; border-radius: 0; border: 0; padding: 22px 16px 80px; box-shadow: none; gap: 18px; }
+  .ct-tablewrap { display: none; }
+  .ct-cards { display: flex; }
+  .ct-in, .ct-sel, .ct-ta { font-size: 16px; }
+  .ct-filters .ct-sel { flex: 1 1 calc(50% - 10px); max-width: none; }
+  .ct-stamp { width: 40px; height: 40px; }
+  .ct-squiggle { display: none; }
+  .ct-actions { width: 100%; justify-content: space-between; padding-top: 0; gap: 10px; flex-wrap: nowrap; }
+  .ct-vsep { display: none; }
+  .ct-theme button { padding: 7px 8px; gap: 4px; font-size: 12.5px; }
+  .ct-btn.primary { padding: 10px 14px; }
+}
+@media (max-width: 640px) {
+  .ct-overlay { padding: 0; }
+  .ct-sheet { border-radius: 0; min-height: 100%; border: 0; box-shadow: none; margin: 0; }
+  .ct-row.r3 { grid-template-columns: 1fr 1fr; }
+  .ct-row.r3 .ct-field:first-child { grid-column: 1 / -1; }
+  .ct-row.r5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ct-bar-row { grid-template-columns: minmax(100px, 44%) 1fr 74px; }
+  .ct-tile { border-radius: 36px 36px 4px 4px; padding: 20px 16px 14px; }
+  .ct-tile .n { font-size: 32px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ct-bar-fill { transition: width .25s ease; }
+  .ct-btn, .ct-item { transition: box-shadow .12s ease; }
+}
+</style>
+</head>
+<body class="is-ro">
+<div class="ct-app" id="app">
+  <header class="ct-top">
+    <div class="ct-brand">
+      <div class="ct-titlewrap">
+        <h1>Content Tracker</h1>
+        <svg class="ct-stamp" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><polygon points="3.0,3.0 5.3,5.2 7.7,3.0 10.0,5.2 12.3,3.0 14.7,5.2 17.0,3.0 19.3,5.2 21.7,3.0 24.0,5.2 26.3,3.0 28.7,5.2 31.0,3.0 33.3,5.2 35.7,3.0 38.0,5.2 40.3,3.0 42.7,5.2 45.0,3.0 42.8,5.3 45.0,7.7 42.8,10.0 45.0,12.3 42.8,14.7 45.0,17.0 42.8,19.3 45.0,21.7 42.8,24.0 45.0,26.3 42.8,28.7 45.0,31.0 42.8,33.3 45.0,35.7 42.8,38.0 45.0,40.3 42.8,42.7 45.0,45.0 42.7,42.8 40.3,45.0 38.0,42.8 35.7,45.0 33.3,42.8 31.0,45.0 28.7,42.8 26.3,45.0 24.0,42.8 21.7,45.0 19.3,42.8 17.0,45.0 14.7,42.8 12.3,45.0 10.0,42.8 7.7,45.0 5.3,42.8 3.0,45.0 5.2,42.7 3.0,40.3 5.2,38.0 3.0,35.7 5.2,33.3 3.0,31.0 5.2,28.7 3.0,26.3 5.2,24.0 3.0,21.7 5.2,19.3 3.0,17.0 5.2,14.7 3.0,12.3 5.2,10.0 3.0,7.7 5.2,5.3" style="fill:var(--red)"/><g style="stroke:var(--stamp-ink)" stroke-width="3.6" stroke-linecap="round"><line x1="13.0" y1="24.0" x2="35.0" y2="24.0"/><line x1="16.2" y1="16.2" x2="31.8" y2="31.8"/><line x1="24.0" y1="13.0" x2="24.0" y2="35.0"/><line x1="31.8" y1="16.2" x2="16.2" y2="31.8"/></g><circle cx="24" cy="24" r="4.2" style="fill:var(--stamp-ink)"/></svg>
+      </div>
+      <span id="sync" class="ct-sync">Connecting</span>
+    </div>
+    <div class="ct-actions">
+      <div class="ct-theme" role="group" aria-label="Theme">
+        <button type="button" data-theme-choice="light" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g style="fill:none;stroke:currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></g></svg>Light</button>
+        <button type="button" data-theme-choice="dark" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" style="fill:none;stroke:currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Dark</button>
+        <button type="button" data-theme-choice="auto" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" style="fill:none;stroke:currentColor" stroke-width="2"/><path d="M12 4a8 8 0 0 1 0 16z" style="fill:currentColor"/></svg>Auto</button>
+      </div>
+      <span class="ct-vsep" aria-hidden="true"></span>
+      <button id="loginBtn" class="ct-btn ghost" type="button">Log in</button>
+      <button id="logoutBtn" class="ct-btn ghost" type="button" hidden>Log out</button>
+      <button id="addBtn" class="ct-btn primary" type="button">+ Add content</button>
+    </div>
+  </header>
+
+  <div class="ct-tabsrow">
+    <nav class="ct-tabs" role="tablist" aria-label="Views">
+      <button class="ct-tab" role="tab" id="tab-log" data-tab="log" aria-controls="view-log" aria-selected="true" type="button">Log</button>
+      <button class="ct-tab" role="tab" id="tab-mix" data-tab="mix" aria-controls="view-mix" aria-selected="false" type="button">Mix</button>
+      <button class="ct-tab" role="tab" id="tab-lists" data-tab="lists" aria-controls="view-lists" aria-selected="false" type="button">Lists</button>
+    </nav>
+    <svg class="ct-squiggle" viewBox="0 0 94 34" aria-hidden="true" focusable="false"><g fill="none" style="stroke:var(--red)" stroke-width="3" stroke-linecap="round"><path d="M3 10 q 6.25 -6 12.5 0 q 6.25 6 12.5 0 q 6.25 -6 12.5 0 q 6.25 6 12.5 0 q 6.25 -6 12.5 0 q 6.25 6 12.5 0 q 6.25 -6 12.5 0"/><path d="M3 25 q 6.25 -6 12.5 0 q 6.25 6 12.5 0 q 6.25 -6 12.5 0 q 6.25 6 12.5 0 q 6.25 -6 12.5 0 q 6.25 6 12.5 0 q 6.25 -6 12.5 0"/></g></svg>
+  </div>
+
+  <div id="banner" class="ct-banner" hidden></div>
+
+  <!-- LOG -->
+  <section id="view-log" class="ct-view" role="tabpanel" aria-labelledby="tab-log">
+    <div id="summary" class="ct-summary"><span class="ct-muted">Loading your tracker…</span></div>
+    <div class="ct-filters">
+      <input id="q" class="ct-in" type="search" placeholder="Search titles, value, audience, sources, links" aria-label="Search">
+      <select id="fCat" class="ct-sel" aria-label="Filter by category"></select>
+      <select id="fFunnel" class="ct-sel" aria-label="Filter by funnel stage"></select>
+      <select id="fSource" class="ct-sel" aria-label="Filter by source"></select>
+      <select id="fAud" class="ct-sel" aria-label="Filter by audience"></select>
+      <select id="fStatus" class="ct-sel" aria-label="Filter by status"></select>
+      <select id="sort" class="ct-sel" aria-label="Sort">
+        <option value="new">Newest first</option>
+        <option value="old">Oldest first</option>
+        <option value="views">Most views</option>
+      </select>
+      <button id="clearF" class="ct-btn ghost small" type="button">Clear filters</button>
+      <button id="copyCsv" class="ct-btn ghost small ct-learn" type="button"><span class="ct-arrowbox" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M7 17L17 7M9 7h8v8" style="fill:none;stroke:currentColor" stroke-width="2.4" stroke-linecap="square"/></svg></span>Copy as CSV</button>
+    </div>
+    <div id="csvBox" class="ct-csvbox" hidden>
+      <label for="csvText" class="ct-hint">Copying isn't allowed here. Select all of this text and copy it yourself.</label>
+      <textarea id="csvText" class="ct-ta" rows="5" readonly></textarea>
+    </div>
+    <div id="count" class="ct-count"></div>
+    <div class="ct-tablewrap" id="tableWrap">
+      <table class="ct-table" id="tbl">
+        <thead>
+          <tr>
+            <th scope="col">Content</th>
+            <th scope="col">Value of the video</th>
+            <th scope="col">Audience</th>
+            <th scope="col">Category</th>
+            <th scope="col">Funnel</th>
+            <th scope="col">Source</th>
+            <th scope="col">Title of source</th>
+            <th scope="col">Reference links</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="num">Views</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div id="cards" class="ct-cards"></div>
+    <div id="empty" class="ct-empty" hidden></div>
+  </section>
+
+  <!-- MIX -->
+  <section id="view-mix" class="ct-view" role="tabpanel" aria-labelledby="tab-mix" hidden>
+    <div class="ct-mixbar">
+      <label for="range">Period
+        <select id="range" class="ct-sel">
+          <option value="all">All time</option>
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="365">Last 12 months</option>
+        </select>
+      </label>
+      <label for="countMode">Count
+        <select id="countMode" class="ct-sel">
+          <option value="all">Everything logged</option>
+          <option value="posted">Posted only</option>
+        </select>
+      </label>
+    </div>
+    <div id="tiles" class="ct-tiles"></div>
+    <div class="ct-card" id="recentCard">
+      <h2>Your last 10 pieces, oldest to newest</h2>
+      <div id="recent"></div>
+    </div>
+    <div class="ct-grid2">
+      <div class="ct-card" id="funnelCard">
+        <h2>Funnel split</h2>
+        <div id="funnelChart"></div>
+      </div>
+      <div class="ct-card" id="catCard">
+        <h2>By category</h2>
+        <div id="catChart"></div>
+      </div>
+    </div>
+    <div class="ct-card" id="subCard">
+      <h2>By subcategory</h2>
+      <p class="ct-hint" id="subHint"></p>
+      <div id="subChart"></div>
+    </div>
+    <div class="ct-grid2">
+      <div class="ct-card" id="srcCard">
+        <h2>By source</h2>
+        <div id="srcChart"></div>
+      </div>
+      <div class="ct-card" id="audCard">
+        <h2>By audience</h2>
+        <div id="audChart"></div>
+      </div>
+    </div>
+    <div class="ct-card" id="perfCard">
+      <div class="ct-cardhead">
+        <h2>What performs</h2>
+        <label class="ct-hint" for="perfBy">Group by
+          <select id="perfBy" class="ct-sel">
+            <option value="category">Category</option>
+            <option value="sub">Subcategory</option>
+            <option value="funnel">Funnel stage</option>
+            <option value="source">Source</option>
+            <option value="audience">Audience</option>
+          </select>
+        </label>
+      </div>
+      <p class="ct-hint">Averages per posted piece, using the numbers you log after posting. Sorted by average views.</p>
+      <div class="ct-perfwrap" id="perfWrap"></div>
+    </div>
+  </section>
+
+  <!-- LISTS -->
+  <section id="view-lists" class="ct-view" role="tabpanel" aria-labelledby="tab-lists" hidden>
+    <div class="ct-card">
+      <h2>Categories and subcategories</h2>
+      <p class="ct-hint">These fill the dropdowns. The funnel stage next to each subcategory is filled in for you when you pick it, and you can still change it per piece. Renaming here also renames pieces already logged. Removing an option keeps old pieces as they are.</p>
+      <div id="catEditor" class="ct-catgrid"></div>
+      <div class="ct-addcat ct-addonly">
+        <input id="newCat" class="ct-in" placeholder="New category name" aria-label="New category name">
+        <button id="addCat" class="ct-btn small" type="button">Add category</button>
+      </div>
+    </div>
+    <div class="ct-grid2">
+      <div class="ct-card">
+        <h2>Sources</h2>
+        <div id="srcEditor" class="ct-stack"></div>
+      </div>
+      <div class="ct-card">
+        <h2>Audiences</h2>
+        <p class="ct-hint">Suggestions for the audience field. You can still type any audience on a piece.</p>
+        <div id="audEditor" class="ct-stack"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Editor -->
+<div id="overlay" class="ct-overlay" hidden>
+  <div class="ct-sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <form id="form" novalidate>
+      <div class="ct-sheet-head">
+        <h2 id="sheetTitle">Add content</h2>
+        <button type="button" class="ct-icon-btn" id="closeSheet" aria-label="Close">×</button>
+      </div>
+      <div class="ct-sheet-body">
+        <div class="ct-field">
+          <label for="f_title">Content title <span class="sub">· the hook or working title</span></label>
+          <input id="f_title" class="ct-in" placeholder="e.g. Why your RAG pipeline retrieves the wrong chunks">
+        </div>
+        <div class="ct-field">
+          <label for="f_value">Topic description <span class="sub">· the value a viewer walks away with</span></label>
+          <textarea id="f_value" class="ct-ta" rows="3" placeholder="What will they understand or be able to do after watching?"></textarea>
+        </div>
+        <div class="ct-field">
+          <label for="f_aud">Audience <span class="sub">· who it's for</span></label>
+          <input id="f_aud" class="ct-in" list="audList" placeholder="Pick a suggestion or type your own">
+          <datalist id="audList"></datalist>
+        </div>
+        <div class="ct-row r3">
+          <div class="ct-field">
+            <label for="f_cat">Category</label>
+            <select id="f_cat" class="ct-sel"></select>
+          </div>
+          <div class="ct-field">
+            <label for="f_sub">Subcategory</label>
+            <select id="f_sub" class="ct-sel"></select>
+          </div>
+          <div class="ct-field">
+            <label for="f_funnel">Funnel stage</label>
+            <select id="f_funnel" class="ct-sel">
+              <option value="">Not set</option>
+              <option value="TOFU">TOFU · reach</option>
+              <option value="MOFU">MOFU · trust</option>
+              <option value="BOFU">BOFU · convert</option>
+            </select>
+          </div>
+        </div>
+        <div class="ct-row r2">
+          <div class="ct-field">
+            <label for="f_source">Source</label>
+            <select id="f_source" class="ct-sel"></select>
+          </div>
+          <div class="ct-field">
+            <label for="f_srcTitle">Title of source</label>
+            <input id="f_srcTitle" class="ct-in" placeholder="Video, post, talk or person">
+          </div>
+        </div>
+        <div class="ct-field">
+          <label for="f_links">Reference links <span class="sub">· one per line</span></label>
+          <textarea id="f_links" class="ct-ta" rows="2" placeholder="https://"></textarea>
+        </div>
+        <div class="ct-row r2">
+          <div class="ct-field">
+            <label for="f_status">Status</label>
+            <select id="f_status" class="ct-sel"></select>
+          </div>
+          <div class="ct-field">
+            <label for="f_posted">Posted on</label>
+            <input id="f_posted" class="ct-in" type="date">
+          </div>
+        </div>
+        <fieldset class="ct-perfset">
+          <legend>Performance · fill in after posting</legend>
+          <div class="ct-row r5">
+            <div class="ct-field"><label for="f_views">Views</label><input id="f_views" class="ct-in" type="number" min="0" step="1" inputmode="numeric"></div>
+            <div class="ct-field"><label for="f_likes">Likes</label><input id="f_likes" class="ct-in" type="number" min="0" step="1" inputmode="numeric"></div>
+            <div class="ct-field"><label for="f_comments">Comments</label><input id="f_comments" class="ct-in" type="number" min="0" step="1" inputmode="numeric"></div>
+            <div class="ct-field"><label for="f_saves">Saves</label><input id="f_saves" class="ct-in" type="number" min="0" step="1" inputmode="numeric"></div>
+            <div class="ct-field"><label for="f_shares">Shares</label><input id="f_shares" class="ct-in" type="number" min="0" step="1" inputmode="numeric"></div>
+          </div>
+        </fieldset>
+        <div class="ct-field">
+          <label for="f_notes">Notes <span class="sub">· what worked, what you'd do differently next time</span></label>
+          <textarea id="f_notes" class="ct-ta" rows="2"></textarea>
+        </div>
+        <p id="formErr" class="ct-formerr" role="alert"></p>
+      </div>
+      <div class="ct-sheet-foot">
+        <button type="button" id="delBtn" class="ct-btn ghost danger">Delete</button>
+        <span class="sp"></span>
+        <button type="button" id="cancelBtn" class="ct-btn ghost">Cancel</button>
+        <button type="submit" id="saveBtn" class="ct-btn primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="loginOverlay" class="ct-overlay" hidden>
+  <div class="ct-sheet sm" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <form id="loginForm" novalidate>
+      <div class="ct-sheet-head">
+        <h2 id="loginTitle">Log in</h2>
+        <button type="button" class="ct-icon-btn" id="loginClose" aria-label="Close">×</button>
+      </div>
+      <div class="ct-sheet-body">
+        <p class="ct-hint">Only the owner can log in to add and edit content. Everyone else can browse it.</p>
+        <div class="ct-field">
+          <label for="l_email">Email</label>
+          <input id="l_email" class="ct-in" type="email" autocomplete="username" inputmode="email">
+        </div>
+        <div class="ct-field">
+          <label for="l_pass">Password</label>
+          <input id="l_pass" class="ct-in" type="password" autocomplete="current-password">
+        </div>
+        <p id="loginErr" class="ct-formerr" role="alert"></p>
+      </div>
+      <div class="ct-sheet-foot">
+        <span class="sp"></span>
+        <button type="button" id="loginCancel" class="ct-btn ghost">Cancel</button>
+        <button type="submit" id="loginSubmit" class="ct-btn primary">Log in</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<template id="tplStamp"><svg class="ct-stamp" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><polygon points="3.0,3.0 5.3,5.2 7.7,3.0 10.0,5.2 12.3,3.0 14.7,5.2 17.0,3.0 19.3,5.2 21.7,3.0 24.0,5.2 26.3,3.0 28.7,5.2 31.0,3.0 33.3,5.2 35.7,3.0 38.0,5.2 40.3,3.0 42.7,5.2 45.0,3.0 42.8,5.3 45.0,7.7 42.8,10.0 45.0,12.3 42.8,14.7 45.0,17.0 42.8,19.3 45.0,21.7 42.8,24.0 45.0,26.3 42.8,28.7 45.0,31.0 42.8,33.3 45.0,35.7 42.8,38.0 45.0,40.3 42.8,42.7 45.0,45.0 42.7,42.8 40.3,45.0 38.0,42.8 35.7,45.0 33.3,42.8 31.0,45.0 28.7,42.8 26.3,45.0 24.0,42.8 21.7,45.0 19.3,42.8 17.0,45.0 14.7,42.8 12.3,45.0 10.0,42.8 7.7,45.0 5.3,42.8 3.0,45.0 5.2,42.7 3.0,40.3 5.2,38.0 3.0,35.7 5.2,33.3 3.0,31.0 5.2,28.7 3.0,26.3 5.2,24.0 3.0,21.7 5.2,19.3 3.0,17.0 5.2,14.7 3.0,12.3 5.2,10.0 3.0,7.7 5.2,5.3" style="fill:var(--red)"/><g style="stroke:var(--stamp-ink)" stroke-width="3.6" stroke-linecap="round"><line x1="13.0" y1="24.0" x2="35.0" y2="24.0"/><line x1="16.2" y1="16.2" x2="31.8" y2="31.8"/><line x1="24.0" y1="13.0" x2="24.0" y2="35.0"/><line x1="31.8" y1="16.2" x2="16.2" y2="31.8"/></g><circle cx="24" cy="24" r="4.2" style="fill:var(--stamp-ink)"/></svg></template>
+
+<div id="toast" class="ct-toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var FUNNELS = ['TOFU', 'MOFU', 'BOFU'];
+  var FUNNEL_NOTE = { TOFU: 'reach', MOFU: 'trust', BOFU: 'convert' };
+  var STATUSES = ['Idea', 'Scripted', 'Filmed', 'Posted'];
+  var METRICS = [['views', 'Views'], ['likes', 'Likes'], ['comments', 'Comments'], ['saves', 'Saves'], ['shares', 'Shares']];
+
+  var state = {
+    db: null,
+    cfg: null,
+    cfgConfirmed: false,
+    entries: [],
+    entriesLoaded: false,
+    entriesConfirmed: false,
+    conn: 'connecting',
+    readOnly: true,
+    isAdmin: false,
+    session: null,
+    pending: 0,
+    editingId: null,
+    tab: 'log'
+  };
+
+  function $(id) { return document.getElementById(id); }
+
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        var v = attrs[k];
+        if (v == null || v === false) return;
+        if (k === 'class') el.className = v;
+        else if (k === 'text') el.textContent = v;
+        else if (k === 'style') el.setAttribute('style', v);
+        else if (k.slice(0, 2) === 'on' && typeof v === 'function') el.addEventListener(k.slice(2), v);
+        else if (k === 'value' || k === 'disabled' || k === 'placeholder' || k === 'type' || k === 'id') el[k] = v;
+        else el.setAttribute(k, v === true ? '' : String(v));
+      });
+    }
+    for (var i = 2; i < arguments.length; i++) append(el, arguments[i]);
+    return el;
+  }
+  function append(el, c) {
+    if (c == null || c === false) return;
+    if (Array.isArray(c)) { c.forEach(function (x) { append(el, x); }); return; }
+    el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  }
+
+  function str(v) { return typeof v === 'string' ? v : (v == null ? '' : String(v)); }
+  function num(v) { if (v === '' || v == null) return null; var n = Number(v); return isFinite(n) && n >= 0 ? n : null; }
+  function uniq(arr) { var seen = {}; var out = []; arr.forEach(function (x) { if (x && !seen[x]) { seen[x] = 1; out.push(x); } }); return out; }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function fmt(n) { return Math.round(n).toLocaleString('en-GB'); }
+  function pct(c, n) { return n ? Math.round(c / n * 100) + '%' : '0%'; }
+  function todayISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function fmtDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso.length === 10 ? iso + 'T00:00:00' : iso);
+    if (isNaN(d)) return '';
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function entryDate(e) { return e.postedOn || (e.createdAt || '').slice(0, 10); }
+  function dateLabel(e) { return e.postedOn ? 'Posted ' + fmtDate(e.postedOn) : (e.createdAt ? 'Added ' + fmtDate(e.createdAt) : ''); }
+
+  function normEntry(id, d) {
+    d = d || {};
+    var e = {
+      id: id,
+      title: str(d.title), value: str(d.value), audience: str(d.audience),
+      category: str(d.category), sub: str(d.sub),
+      funnel: FUNNELS.indexOf(d.funnel) >= 0 ? d.funnel : '',
+      source: str(d.source), sourceTitle: str(d.sourceTitle),
+      links: Array.isArray(d.links) ? d.links.map(str).filter(Boolean) : [],
+      status: STATUSES.indexOf(d.status) >= 0 ? d.status : 'Idea',
+      postedOn: /^\d{4}-\d{2}-\d{2}$/.test(str(d.postedOn)) ? d.postedOn : '',
+      notes: str(d.notes), createdAt: str(d.createdAt), updatedAt: str(d.updatedAt),
+      raw: d
+    };
+    METRICS.forEach(function (m) { e[m[0]] = num(d[m[0]]); });
+    return e;
+  }
+  function normCfg(d) {
+    d = d || {};
+    var cats = Array.isArray(d.categories) ? d.categories : [];
+    // Any extra fields stored by a later version of the tracker are kept, so a save here never drops them.
+    return Object.assign({}, d, {
+      categories: cats.filter(function (c) { return c && typeof c === 'object' && str(c.name); }).map(function (c) {
+        return Object.assign({}, c, {
+          name: str(c.name),
+          subs: (Array.isArray(c.subs) ? c.subs : []).filter(function (s) { return s && typeof s === 'object' && str(s.name); }).map(function (s) {
+            return Object.assign({}, s, { name: str(s.name), funnel: FUNNELS.indexOf(s.funnel) >= 0 ? s.funnel : 'TOFU' });
+          })
+        });
+      }),
+      sources: (Array.isArray(d.sources) ? d.sources : []).map(str).filter(Boolean),
+      audiences: (Array.isArray(d.audiences) ? d.audiences : []).map(str).filter(Boolean)
+    });
+  }
+  function cfg() { return state.cfg || { categories: [], sources: [], audiences: [] }; }
+  function catIndex(name) { var cs = cfg().categories; for (var i = 0; i < cs.length; i++) if (cs[i].name === name) return i; return -1; }
+  function catColor(name) { var i = catIndex(name); return i >= 0 && i < 8 ? 'var(--c' + (i + 1) + ')' : 'var(--muted)'; }
+  function findCat(name) { var i = catIndex(name); return i >= 0 ? cfg().categories[i] : null; }
+  function subFunnel(cat, sub) {
+    var c = findCat(cat); if (!c) return '';
+    for (var i = 0; i < c.subs.length; i++) if (c.subs[i].name === sub) return c.subs[i].funnel;
+    return '';
+  }
+  function countBy(list, key) { var o = {}; list.forEach(function (e) { var k = key(e); o[k] = (o[k] || 0) + 1; }); return o; }
+
+  /* ---------- small UI bits ---------- */
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 3200);
+  }
+  function banner(msg) { var b = $('banner'); if (msg) { b.textContent = msg; b.hidden = false; } else { b.hidden = true; } }
+  function updateSync() {
+    var el = $('sync'); var cls = 'ct-sync'; var text;
+    if (state.conn === 'off') { text = 'Not connected'; cls += ' is-warn'; }
+    else if (state.conn === 'error') { text = 'Can’t load'; cls += ' is-warn'; }
+    else if (state.conn === 'stale') { text = 'Can’t reach database'; cls += ' is-warn'; }
+    else if (state.conn === 'connecting') { text = 'Connecting'; }
+    else if (state.pending > 0) { text = 'Saving'; }
+    else { text = state.isAdmin ? 'Live · editing' : 'Live'; cls += ' is-live'; }
+    el.className = cls; el.textContent = text;
+  }
+  function setReadOnly(on) {
+    state.readOnly = on;
+    document.body.classList.toggle('is-ro', on);
+    updateSync();
+    renderLists(true);
+    renderLog();
+  }
+  function funnelTag(f) {
+    if (!f) return h('span', { class: 'ct-muted', text: '—' });
+    var i = FUNNELS.indexOf(f);
+    return h('span', { class: 'ct-ftag', title: f + ' · ' + FUNNEL_NOTE[f] }, h('i', { class: 'ct-sq', style: 'background:var(--f' + (i + 1) + ')' }), f);
+  }
+  function statusPill(s) { return h('span', { class: 'ct-pill s-' + s.toLowerCase(), text: s }); }
+  function catLabel(e) {
+    if (!e.category) return h('span', { class: 'ct-muted', text: '—' });
+    return h('span', { class: 'ct-catlbl' },
+      h('i', { class: 'ct-chip', style: 'background:' + catColor(e.category) }),
+      h('span', null, e.category, e.sub ? h('span', { class: 'ct-muted', text: ' › ' + e.sub }) : null));
+  }
+  function toURL(u) {
+    var s = u.trim(); if (!s) return null;
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) { if (/^[\w-]+(\.[\w-]+)+/.test(s)) s = 'https://' + s; else return null; }
+    try { var url = new URL(s); return (url.protocol === 'http:' || url.protocol === 'https:') ? url : null; } catch (_) { return null; }
+  }
+  function linkList(links) {
+    var wrap = h('div', { class: 'ct-links' });
+    links.forEach(function (u) {
+      var url = toURL(u);
+      if (url) {
+        var path = url.pathname.length > 1 ? url.pathname : '';
+        if (path.length > 26) path = path.slice(0, 26) + '…';
+        var a = h('a', { target: '_blank', rel: 'noopener noreferrer', title: url.href, text: url.hostname.replace(/^www\./, '') + path });
+        a.href = url.href;
+        a.addEventListener('click', function (ev) { ev.stopPropagation(); });
+        a.addEventListener('keydown', function (ev) { ev.stopPropagation(); });
+        wrap.append(a);
+      } else wrap.append(h('span', { text: u }));
+    });
+    return wrap;
+  }
+
+  /* ---------- Supabase ---------- */
+  var CONF = window.TRACKER_CONFIG || {};
+  var sb = null;
+  try {
+    if (window.supabase && CONF.supabaseUrl && CONF.supabaseAnonKey) sb = window.supabase.createClient(CONF.supabaseUrl, CONF.supabaseAnonKey);
+  } catch (_) { sb = null; }
+  // App field -> database column
+  var COLS = {
+    title: 'title', value: 'value', audience: 'audience', category: 'category', sub: 'subcategory', funnel: 'funnel',
+    source: 'source', sourceTitle: 'source_title', links: 'links', status: 'status', postedOn: 'posted_on',
+    views: 'views', likes: 'likes', comments: 'comments', saves: 'saves', shares: 'shares', notes: 'notes'
+  };
+  function fromRow(r) {
+    var d = {};
+    Object.keys(COLS).forEach(function (k) { d[k] = r[COLS[k]]; });
+    d.postedOn = d.postedOn ? String(d.postedOn).slice(0, 10) : '';
+    d.createdAt = r.created_at; d.updatedAt = r.updated_at;
+    return normEntry(r.id, d);
+  }
+  function toRow(data) {
+    var r = {};
+    Object.keys(COLS).forEach(function (k) {
+      if (!(k in data)) return;
+      var v = data[k];
+      if (k === 'postedOn' && !v) v = null;
+      r[COLS[k]] = v;
+    });
+    return r;
+  }
+  function check(res) { if (res && res.error) throw res.error; return res; }
+
+  /* ---------- writes ---------- */
+  // strict: the write must touch at least one row (row-level security silently skips rows you may not change)
+  function write(fn, strict) {
+    state.pending++; updateSync();
+    return Promise.resolve().then(fn).then(check).then(function (res) {
+      if (strict && (!res || !Array.isArray(res.data) || !res.data.length)) throw { code: '42501', message: 'No rows changed' };
+      return res;
+    }).finally(function () { state.pending--; updateSync(); scheduleReload(); });
+  }
+  function handleWriteError(e) {
+    var msg = (e && e.message) || '';
+    if (e && (e.code === '42501' || /row-level security|permission|JWT/i.test(msg))) {
+      toast('Not saved: only the tracker’s owner can make changes. Log in again if that’s you.');
+    } else toast('Not saved. Check your connection and try again.');
+  }
+  var cfgWriting = false, cfgDirty = false;
+  function saveCfg() {
+    if (!sb || state.readOnly) return;
+    if (cfgWriting) { cfgDirty = true; return; }
+    cfgWriting = true;
+    (function loop() {
+      cfgDirty = false;
+      var body = JSON.parse(JSON.stringify(cfg()));
+      body.updatedAt = new Date().toISOString();
+      write(function () { return sb.from('tracker_config').upsert({ id: 'options', data: body }).select('id'); }, true).then(function () {
+        if (cfgDirty) return loop();
+        cfgWriting = false;
+      }, function (e) { cfgWriting = false; handleWriteError(e); scheduleReload(); });
+    })();
+  }
+  // Rename a value on every logged piece that has it, in one database update.
+  function propagate(filters, patch) {
+    if (!sb || state.readOnly) return Promise.resolve(0);
+    return write(function () {
+      var q = sb.from('entries').update(toRow(patch));
+      Object.keys(filters).forEach(function (k) { q = q.eq(COLS[k], filters[k]); });
+      return q.select('id');
+    }).then(function (res) { return res && res.data ? res.data.length : 0; }, function (err) { handleWriteError(err); return 0; });
+  }
+
+  /* ---------- Log ---------- */
+  function setOptions(sel, opts) {
+    if (document.activeElement === sel) return;
+    var cur = sel.value;
+    sel.replaceChildren.apply(sel, opts);
+    sel.value = cur;
+    if (sel.value !== cur) sel.value = '';
+  }
+  function opt(value, text) { return h('option', { value: value, text: text }); }
+  function usedSources() { return uniq(cfg().sources.concat(state.entries.map(function (e) { return e.source; }))); }
+  function usedAudiences() { return uniq(cfg().audiences.concat(state.entries.map(function (e) { return e.audience; }))); }
+
+  function renderFilterOptions() {
+    var catOpts = [opt('', 'All categories')];
+    cfg().categories.forEach(function (c) {
+      var g = h('optgroup', { label: c.name });
+      g.append(opt(JSON.stringify(['c', c.name]), 'All of ' + c.name));
+      c.subs.forEach(function (s) { g.append(opt(JSON.stringify(['s', c.name, s.name]), s.name)); });
+      catOpts.push(g);
+    });
+    var orphanCats = uniq(state.entries.map(function (e) { return e.category; })).filter(function (n) { return catIndex(n) < 0; });
+    orphanCats.forEach(function (n) { catOpts.push(opt(JSON.stringify(['c', n]), n + ' (not in lists)')); });
+    setOptions($('fCat'), catOpts);
+    setOptions($('fFunnel'), [opt('', 'All funnel stages')].concat(FUNNELS.map(function (f) { return opt(f, f + ' · ' + FUNNEL_NOTE[f]); })));
+    setOptions($('fSource'), [opt('', 'All sources')].concat(usedSources().map(function (s) { return opt(s, s); })));
+    setOptions($('fAud'), [opt('', 'All audiences')].concat(usedAudiences().map(function (s) { return opt(s, s); })));
+    setOptions($('fStatus'), [opt('', 'Any status')].concat(STATUSES.map(function (s) { return opt(s, s); })));
+    var dl = $('audList'); dl.replaceChildren.apply(dl, usedAudiences().map(function (a) { return h('option', { value: a }); }));
+  }
+
+  function filteredEntries() {
+    var q = $('q').value.trim().toLowerCase();
+    var fc = null; try { fc = $('fCat').value ? JSON.parse($('fCat').value) : null; } catch (_) { fc = null; }
+    var ff = $('fFunnel').value, fs = $('fSource').value, fa = $('fAud').value, fst = $('fStatus').value;
+    var list = state.entries.filter(function (e) {
+      if (fc) { if (e.category !== fc[1]) return false; if (fc[0] === 's' && e.sub !== fc[2]) return false; }
+      if (ff && e.funnel !== ff) return false;
+      if (fs && e.source !== fs) return false;
+      if (fa && e.audience !== fa) return false;
+      if (fst && e.status !== fst) return false;
+      if (q) {
+        var hay = [e.title, e.value, e.audience, e.category, e.sub, e.funnel, e.source, e.sourceTitle, e.notes].concat(e.links).join(' \n ').toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    });
+    var sort = $('sort').value;
+    list.sort(function (a, b) {
+      if (sort === 'views') return (b.views == null ? -1 : b.views) - (a.views == null ? -1 : a.views);
+      var ka = entryDate(a) + '|' + a.createdAt, kb = entryDate(b) + '|' + b.createdAt;
+      return sort === 'old' ? (ka < kb ? -1 : ka > kb ? 1 : 0) : (ka > kb ? -1 : ka < kb ? 1 : 0);
+    });
+    return list;
+  }
+
+  function renderSummary() {
+    var box = $('summary'); box.replaceChildren();
+    if (!state.entriesLoaded) { box.append(h('span', { class: 'ct-muted', text: state.conn === 'off' ? 'Saved data isn’t available here.' : 'Loading your tracker…' })); return; }
+    var n = state.entries.length;
+    var posted = state.entries.filter(function (e) { return e.status === 'Posted'; }).length;
+    box.append(h('span', null, h('b', { text: String(n) }), n === 1 ? ' piece logged' : ' pieces logged', ' · ', h('b', { text: String(posted) }), ' posted'));
+    if (n) {
+      var fc = countBy(state.entries, function (e) { return e.funnel; });
+      var lg = h('span', { class: 'ct-flegend', 'aria-label': 'Funnel split' });
+      FUNNELS.forEach(function (f, i) {
+        lg.append(h('span', { class: 'ct-fitem' }, h('i', { class: 'ct-sq', style: 'background:var(--f' + (i + 1) + ')' }), f + ' ', h('b', { text: pct(fc[f] || 0, n) })));
+      });
+      box.append(lg);
+    }
+  }
+
+  function stampEl() { return document.importNode($('tplStamp').content, true); }
+  function openOnKey(id) { return function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openEditor(id); } }; }
+
+  function renderLog() {
+    renderSummary();
+    var tbody = $('tbody'), cards = $('cards'), empty = $('empty');
+    tbody.replaceChildren(); cards.replaceChildren();
+    if (!state.entriesLoaded) {
+      $('count').textContent = '';
+      $('tableWrap').hidden = true; empty.hidden = true;
+      return;
+    }
+    var list = filteredEntries();
+    var total = state.entries.length;
+    $('count').textContent = total ? (list.length === total ? 'Showing all ' + total : 'Showing ' + list.length + ' of ' + total) : '';
+    if (!total || !list.length) {
+      $('tableWrap').hidden = true;
+      empty.replaceChildren();
+      if (!total) {
+        empty.append(stampEl(), h('h2', { text: 'Nothing logged yet' }),
+          h('p', { text: 'Add a reel you’ve posted or one you’re planning. The Mix tab fills in as you go, so you can see which types you lean on and which you haven’t tried.' }),
+          state.readOnly ? null : h('button', { class: 'ct-btn primary', type: 'button', text: '+ Add content', onclick: function () { openEditor(null); } }));
+      } else {
+        empty.append(h('h2', { text: 'No pieces match' }), h('p', { text: 'Try another search or clear the filters.' }),
+          h('button', { class: 'ct-btn', type: 'button', text: 'Clear filters', onclick: clearFilters }));
+      }
+      empty.hidden = false;
+      return;
+    }
+    empty.hidden = true; $('tableWrap').hidden = false;
+    list.forEach(function (e) {
+      var open = function () { openEditor(e.id); };
+      tbody.append(h('tr', { tabindex: '0', style: '--cat:' + catColor(e.category), onclick: open, onkeydown: openOnKey(e.id) },
+        h('td', { class: 'c-title' }, h('div', { class: 'ct-t', text: e.title || 'Untitled' }), h('div', { class: 'ct-muted ct-small', text: dateLabel(e) })),
+        h('td', { class: 'c-value', text: e.value || '—' }),
+        h('td', { text: e.audience || '—' }),
+        h('td', { class: 'c-cat' }, catLabel(e)),
+        h('td', null, funnelTag(e.funnel)),
+        h('td', { text: e.source || '—' }),
+        h('td', { text: e.sourceTitle || '—' }),
+        h('td', null, e.links.length ? linkList(e.links) : '—'),
+        h('td', null, statusPill(e.status)),
+        h('td', { class: 'num', text: e.views != null ? fmt(e.views) : '—' })));
+
+      var dl = h('dl', { class: 'ct-dl' });
+      [['Audience', e.audience], ['Source', [e.source, e.sourceTitle].filter(Boolean).join(' · ')], ['Views', e.views != null ? fmt(e.views) : '']].forEach(function (p) {
+        if (p[1]) dl.append(h('dt', { text: p[0] }), h('dd', { text: p[1] }));
+      });
+      cards.append(h('article', { class: 'ct-item', tabindex: '0', style: '--cat:' + catColor(e.category), onclick: open, onkeydown: openOnKey(e.id) },
+        h('div', { class: 'ct-item-top' }, h('h3', { text: e.title || 'Untitled' }), statusPill(e.status)),
+        h('div', { class: 'ct-item-meta' }, catLabel(e), funnelTag(e.funnel)),
+        e.value ? h('p', { class: 'ct-item-value', text: e.value }) : null,
+        dl.childNodes.length ? dl : null,
+        e.links.length ? linkList(e.links) : null,
+        h('div', { class: 'ct-muted ct-small', text: dateLabel(e) })));
+    });
+  }
+
+  function clearFilters() {
+    ['q', 'fCat', 'fFunnel', 'fSource', 'fAud', 'fStatus'].forEach(function (id) { $(id).value = ''; });
+    $('sort').value = 'new';
+    renderLog();
+  }
+
+  function csvCell(v) {
+    var s = v == null ? '' : String(v);
+    if (/^[=+\-@]/.test(s)) s = "'" + s;
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  function buildCSV(list) {
+    var head = ['Title', 'Value', 'Audience', 'Category', 'Subcategory', 'Funnel', 'Source', 'Source title', 'Links', 'Status', 'Posted on', 'Views', 'Likes', 'Comments', 'Saves', 'Shares', 'Notes', 'Added'];
+    var rows = list.map(function (e) {
+      return [e.title, e.value, e.audience, e.category, e.sub, e.funnel, e.source, e.sourceTitle, e.links.join(' '), e.status, e.postedOn, e.views, e.likes, e.comments, e.saves, e.shares, e.notes, (e.createdAt || '').slice(0, 10)].map(csvCell).join(',');
+    });
+    return [head.map(csvCell).join(',')].concat(rows).join('\n');
+  }
+
+  /* ---------- Mix ---------- */
+  function mixBase() {
+    var r = $('range').value, mode = $('countMode').value;
+    var cutoff = null;
+    if (r !== 'all') { var d = new Date(Date.now() - Number(r) * 864e5); cutoff = d.toISOString().slice(0, 10); }
+    return state.entries.filter(function (e) {
+      if (mode === 'posted' && e.status !== 'Posted') return false;
+      if (cutoff) { var k = entryDate(e); if (!k || k < cutoff) return false; }
+      return true;
+    });
+  }
+  function barChart(rows, total, opts) {
+    opts = opts || {};
+    var max = Math.max(1, Math.max.apply(null, rows.map(function (r) { return r.count; }).concat([0])));
+    var wrap = h('div', { class: 'ct-bars' });
+    rows.forEach(function (r) {
+      var p = total ? r.count / total * 100 : 0;
+      var unit = r.count === 1 ? 'piece' : 'pieces';
+      wrap.append(h('div', { class: 'ct-bar-row' + (r.count ? '' : ' zero'), title: r.label + ': ' + r.count + ' ' + unit + ' (' + Math.round(p) + '% of ' + total + ')' },
+        h('div', { class: 'ct-bar-label' }, r.chip ? h('i', { class: 'ct-chip', style: 'background:' + r.chip }) : null, h('span', { text: r.label }), r.tag || null),
+        h('div', { class: 'ct-bar-track' }, h('div', { class: 'ct-bar-fill', style: 'width:' + (r.count / max * 100).toFixed(1) + '%;background:' + r.color })),
+        h('div', { class: 'ct-bar-val' }, r.count ? [h('b', { text: String(r.count) }), ' · ' + Math.round(p) + '%'] : (opts.zeroText || '0'))));
+    });
+    return wrap;
+  }
+  function emptyNote(text) { return h('p', { class: 'ct-hint', text: text }); }
+
+  function renderMix() {
+    var base = mixBase();
+    var n = base.length;
+    var C = cfg();
+    var allSubs = [];
+    C.categories.forEach(function (c) { c.subs.forEach(function (s) { allSubs.push([c.name, s.name]); }); });
+    var subCounts = countBy(base, function (e) { return e.category + '\u0001' + e.sub; });
+    var tried = allSubs.filter(function (p) { return subCounts[p[0] + '\u0001' + p[1]]; }).length;
+    var posted = base.filter(function (e) { return e.status === 'Posted'; });
+    var withViews = posted.filter(function (e) { return e.views != null; });
+    var avgViews = withViews.length ? withViews.reduce(function (a, e) { return a + e.views; }, 0) / withViews.length : null;
+
+    var tiles = $('tiles'); tiles.replaceChildren();
+    [[String(n), n === 1 ? 'piece in this view' : 'pieces in this view'],
+     [String(posted.length), 'posted'],
+     [avgViews == null ? '—' : fmt(avgViews), 'average views per posted piece'],
+     [tried + ' / ' + allSubs.length, 'subcategories used']].forEach(function (t) {
+      tiles.append(h('div', { class: 'ct-tile' }, h('span', { class: 'n', text: t[0] }), h('span', { class: 'l', text: t[1] })));
+    });
+
+    // recent
+    var recent = $('recent'); recent.replaceChildren();
+    var sorted = state.entries.slice().sort(function (a, b) { var ka = entryDate(a) + '|' + a.createdAt, kb = entryDate(b) + '|' + b.createdAt; return ka > kb ? -1 : ka < kb ? 1 : 0; });
+    var last = sorted.slice(0, 10);
+    if (!last.length) recent.append(emptyNote('Your most recent pieces show up here as a strip, so you can spot runs of the same type.'));
+    else {
+      var strip = h('div', { class: 'ct-recent', role: 'list' });
+      last.slice().reverse().forEach(function (e) {
+        var label = (e.title || 'Untitled') + ' · ' + (e.category || 'No category') + (e.sub ? ' › ' + e.sub : '') + (e.funnel ? ' · ' + e.funnel : '');
+        strip.append(h('div', { class: 'ct-rsq' + (e.category ? '' : ' none'), role: 'listitem', title: label, 'aria-label': label, style: e.category ? 'background:' + catColor(e.category) : null, text: e.funnel ? e.funnel.charAt(0) : '·' }));
+      });
+      recent.append(strip);
+      var legend = h('div', { class: 'ct-recent-legend' });
+      C.categories.forEach(function (c) { legend.append(h('span', null, h('i', { class: 'ct-chip', style: 'background:' + catColor(c.name) }), c.name)); });
+      legend.append(h('span', { class: 'ct-muted', text: 'Letter = funnel stage (T, M, B)' }));
+      recent.append(legend);
+      var streak = 1; while (streak < last.length && last[streak].category && last[streak].category === last[0].category) streak++;
+      var subStreak = 1; while (subStreak < last.length && last[subStreak].sub && last[subStreak].sub === last[0].sub && last[subStreak].category === last[0].category) subStreak++;
+      var nudge = null;
+      if (last[0].category && streak >= 3) nudge = 'Your last ' + streak + ' pieces are all ' + last[0].category + '. A different category next would break the run.';
+      else if (last[0].sub && subStreak >= 2) nudge = 'Your last ' + subStreak + ' pieces are both ' + last[0].sub + '. Consider a different format next.';
+      if (nudge) recent.append(h('p', { class: 'ct-nudge', text: nudge }));
+    }
+
+    // funnel
+    var fbox = $('funnelChart'); fbox.replaceChildren();
+    var fc = countBy(base, function (e) { return e.funnel; });
+    var seg = h('div', { class: 'ct-seg', role: 'img', 'aria-label': FUNNELS.map(function (f) { return f + ' ' + pct(fc[f] || 0, n); }).join(', ') });
+    FUNNELS.forEach(function (f, i) { var c = fc[f] || 0; if (c) seg.append(h('div', { class: 'ct-seg-part', title: f + ': ' + c + ' (' + pct(c, n) + ')', style: 'flex:' + c + ' 1 0;background:var(--f' + (i + 1) + ')' })); });
+    var legendF = h('div', { class: 'ct-seg-legend' });
+    FUNNELS.forEach(function (f, i) {
+      var c = fc[f] || 0;
+      legendF.append(h('div', { class: 'ct-seg-item' },
+        h('span', { class: 'top' }, h('i', { class: 'ct-sq', style: 'background:var(--f' + (i + 1) + ')' }), f + ' · ' + FUNNEL_NOTE[f]),
+        h('b', { text: pct(c, n) }),
+        h('span', { text: c + (c === 1 ? ' piece' : ' pieces') })));
+    });
+    fbox.append(seg, legendF);
+    var unset = n - FUNNELS.reduce(function (a, f) { return a + (fc[f] || 0); }, 0);
+    if (unset) fbox.append(emptyNote(unset + (unset === 1 ? ' piece has' : ' pieces have') + ' no funnel stage.'));
+
+    // category
+    var cc = countBy(base, function (e) { return e.category; });
+    var catRows = C.categories.map(function (c) { return { label: c.name, count: cc[c.name] || 0, color: catColor(c.name), chip: catColor(c.name) }; });
+    Object.keys(cc).forEach(function (k) { if (catIndex(k) < 0) catRows.push({ label: k || 'No category', count: cc[k], color: 'var(--muted)', chip: 'var(--muted)' }); });
+    var cbox = $('catChart'); cbox.replaceChildren(catRows.length ? barChart(catRows, n) : emptyNote('Add categories in the Lists tab.'));
+
+    // subcategory
+    var sbox = $('subChart'); sbox.replaceChildren();
+    var top = null;
+    C.categories.forEach(function (c) {
+      var rows = c.subs.map(function (s) {
+        var k = c.name + '\u0001' + s.name; var count = subCounts[k] || 0;
+        if (count > 1 && (!top || count > top.count)) top = { label: s.name, count: count };
+        return { label: s.name, count: count, color: catColor(c.name), tag: funnelTag(s.funnel) };
+      });
+      var known = {}; c.subs.forEach(function (s) { known[s.name] = 1; });
+      base.forEach(function (e) { if (e.category === c.name && !known[e.sub]) { known[e.sub] = 1; var k = c.name + '\u0001' + e.sub; rows.push({ label: (e.sub || 'No subcategory') + ' (not in lists)', count: subCounts[k] || 0, color: catColor(c.name) }); } });
+      if (!rows.length) return;
+      sbox.append(h('div', { class: 'ct-subgroup' },
+        h('h3', null, h('i', { class: 'ct-chip', style: 'background:' + catColor(c.name) }), c.name),
+        barChart(rows, n, { zeroText: 'not used yet' })));
+    });
+    $('subHint').textContent = !n ? 'Nothing in this view yet. Every subcategory shows as not used.' :
+      (top ? 'Most used: ' + top.label + ' (' + top.count + ', ' + pct(top.count, n) + '). ' : '') +
+      (allSubs.length - tried) + ' of ' + allSubs.length + ' subcategories not used in this view.';
+
+    // source & audience
+    var sc = countBy(base, function (e) { return e.source; });
+    var srcRows = uniq(C.sources.concat(Object.keys(sc))).map(function (s) { return { label: s || 'No source', count: sc[s] || 0, color: 'var(--bar-single)' }; });
+    srcRows.sort(function (a, b) { return b.count - a.count; });
+    $('srcChart').replaceChildren(srcRows.length ? barChart(srcRows, n, { zeroText: 'not used yet' }) : emptyNote('Add sources in the Lists tab.'));
+    var ac = countBy(base, function (e) { return e.audience; });
+    var audRows = uniq(C.audiences.concat(Object.keys(ac))).map(function (s) { return { label: s || 'No audience', count: ac[s] || 0, color: 'var(--bar-single)' }; });
+    audRows.sort(function (a, b) { return b.count - a.count; });
+    $('audChart').replaceChildren(audRows.length ? barChart(audRows, n, { zeroText: 'not used yet' }) : emptyNote('Type an audience on a piece, or add some in the Lists tab.'));
+
+    renderPerf(posted);
+  }
+
+  function renderPerf(posted) {
+    var by = $('perfBy').value;
+    var keyFn = {
+      category: function (e) { return e.category || 'No category'; },
+      sub: function (e) { return (e.category || 'No category') + ' › ' + (e.sub || 'No subcategory'); },
+      funnel: function (e) { return e.funnel || 'Not set'; },
+      source: function (e) { return e.source || 'No source'; },
+      audience: function (e) { return e.audience || 'No audience'; }
+    }[by];
+    var wrap = $('perfWrap'); wrap.replaceChildren();
+    var withNums = posted.filter(function (e) { return METRICS.some(function (m) { return e[m[0]] != null; }); });
+    if (!withNums.length) { wrap.append(emptyNote('Mark pieces as Posted and add their views, likes, saves and shares to compare what works.')); return; }
+    var groups = {};
+    withNums.forEach(function (e) { var k = keyFn(e); (groups[k] = groups[k] || []).push(e); });
+    var rows = Object.keys(groups).map(function (k) {
+      var g = groups[k]; var r = { key: k, n: g.length };
+      METRICS.forEach(function (m) {
+        var vals = g.map(function (e) { return e[m[0]]; }).filter(function (v) { return v != null; });
+        r[m[0]] = vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : null;
+      });
+      return r;
+    });
+    rows.sort(function (a, b) { return (b.views == null ? -1 : b.views) - (a.views == null ? -1 : a.views); });
+    var label = { category: 'Category', sub: 'Subcategory', funnel: 'Funnel stage', source: 'Source', audience: 'Audience' }[by];
+    var thead = h('thead', null, h('tr', null, h('th', { scope: 'col', text: label }), h('th', { scope: 'col', class: 'num', text: 'Posted' }),
+      METRICS.map(function (m) { return h('th', { scope: 'col', class: 'num', text: 'Avg ' + m[1].toLowerCase() }); })));
+    var tbody = h('tbody');
+    rows.forEach(function (r) {
+      var first = h('td', null);
+      if (by === 'category' && catIndex(r.key) >= 0) first.append(h('span', { class: 'ct-catlbl' }, h('i', { class: 'ct-chip', style: 'background:' + catColor(r.key) }), r.key));
+      else if (by === 'funnel' && FUNNELS.indexOf(r.key) >= 0) first.append(funnelTag(r.key));
+      else first.textContent = r.key;
+      tbody.append(h('tr', null, first, h('td', { class: 'num', text: String(r.n) }),
+        METRICS.map(function (m) { return h('td', { class: 'num', text: r[m[0]] == null ? '—' : fmt(r[m[0]]) }); })));
+    });
+    wrap.append(h('table', { class: 'ct-perf' }, thead, tbody));
+  }
+
+  /* ---------- Lists editor ---------- */
+  var listsDirty = false;
+  function maybeRenderLists() {
+    if ($('view-lists').contains(document.activeElement) && document.activeElement !== document.body) { listsDirty = true; return; }
+    renderLists(true);
+  }
+  function removeBtn(fn, label) {
+    var b = h('button', { type: 'button', class: 'ct-icon-btn', 'aria-label': label, title: label, text: '×' });
+    var t = null;
+    b.addEventListener('click', function () {
+      if (b.classList.contains('confirming')) { clearTimeout(t); fn(); return; }
+      b.classList.add('confirming'); b.textContent = 'Remove?';
+      t = setTimeout(function () { b.classList.remove('confirming'); b.textContent = '×'; }, 3000);
+    });
+    return b;
+  }
+  function funnelSelect(val, id) {
+    var s = h('select', { class: 'ct-sel', id: id, 'aria-label': 'Funnel stage', disabled: state.readOnly });
+    FUNNELS.forEach(function (f) { s.append(opt(f, f)); });
+    s.value = val || 'TOFU';
+    return s;
+  }
+  function afterCfgChange(structural) {
+    saveCfg();
+    if (structural) renderLists(true); else maybeRenderLists();
+    renderFilterOptions(); renderLog(); renderMix();
+  }
+  function sameName(a, b) { return a.trim().toLowerCase() === b.trim().toLowerCase(); }
+
+  function renderLists(force) {
+    if (!force && $('view-lists').contains(document.activeElement)) { listsDirty = true; return; }
+    listsDirty = false;
+    var ro = state.readOnly;
+    var box = $('catEditor'); box.replaceChildren();
+    if (!state.cfg) { box.append(emptyNote(state.conn === 'off' ? 'Lists aren’t available here.' : 'Loading lists…')); $('srcEditor').replaceChildren(); $('audEditor').replaceChildren(); return; }
+    var C = cfg();
+    if (!C.categories.length) box.append(emptyNote('No categories yet. Add your first one below.'));
+    C.categories.forEach(function (c, ci) {
+      var catName = c.name;
+      var nameIn = nameField('cat-' + ci, catName, 'Category name', ro);
+      nameIn.addEventListener('change', function () { renameCategory(catName, nameIn); });
+      var block = h('div', { class: 'ct-catblock', style: '--blockc:' + catColor(catName) },
+        h('div', { class: 'ct-cathead' }, h('i', { class: 'ct-chip', style: 'background:' + catColor(catName) }), nameIn,
+          ro ? null : removeBtn(function () { removeCategory(catName); }, 'Remove category ' + catName)));
+      c.subs.forEach(function (s, si) {
+        var subName = s.name;
+        var sIn = nameField('sub-' + ci + '-' + si, subName, 'Subcategory name', ro);
+        sIn.addEventListener('change', function () { renameSub(catName, subName, sIn); });
+        var fSel = funnelSelect(s.funnel, 'subf-' + ci + '-' + si);
+        fSel.addEventListener('change', function () { setSubFunnel(catName, subName, fSel.value); });
+        block.append(h('div', { class: 'ct-subrow' }, sIn, fSel, ro ? h('span') : removeBtn(function () { removeSub(catName, subName); }, 'Remove subcategory ' + subName)));
+      });
+      if (!ro) {
+        var addIn = h('input', { class: 'ct-in', id: 'newsub-' + ci, placeholder: 'New subcategory', 'aria-label': 'New subcategory in ' + catName });
+        var addF = funnelSelect('TOFU', 'newsubf-' + ci);
+        var addB = h('button', { class: 'ct-btn small', type: 'button', text: 'Add' });
+        var go = function () { addSub(catName, addIn.value, addF.value, ci); };
+        addB.addEventListener('click', go);
+        addIn.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); go(); } });
+        block.append(h('div', { class: 'ct-subrow add' }, addIn, addF, addB));
+      }
+      box.append(block);
+    });
+    simpleList('srcEditor', 'sources', 'source', 'New source');
+    simpleList('audEditor', 'audiences', 'audience', 'New audience');
+    sizeNames();
+  }
+  function autosize(el) { if (!el.offsetParent) return; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+  function sizeNames() { requestAnimationFrame(function () { Array.prototype.forEach.call($('view-lists').querySelectorAll('.ct-name'), autosize); }); }
+  function nameField(id, value, label, ro) {
+    var t = h('textarea', { class: 'ct-ta ct-name', id: id, rows: '1', 'aria-label': label, disabled: ro });
+    t.value = value;
+    t.addEventListener('input', function () { autosize(t); });
+    t.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); t.blur(); } });
+    return t;
+  }
+  function simpleList(boxId, key, field, placeholder) {
+    var ro = state.readOnly;
+    var box = $(boxId); box.replaceChildren();
+    var arr = cfg()[key];
+    if (!arr.length) box.append(emptyNote('Nothing here yet.'));
+    arr.forEach(function (v, i) {
+      var val = v;
+      var inp = nameField(key + '-' + i, val, field + ' name', ro);
+      inp.addEventListener('change', function () { renameSimple(key, field, val, inp); });
+      box.append(h('div', { class: 'ct-lirow' }, inp, ro ? h('span') : removeBtn(function () { removeSimple(key, val); }, 'Remove ' + val)));
+    });
+    if (!ro) {
+      var add = h('input', { class: 'ct-in', id: 'new-' + key, placeholder: placeholder, 'aria-label': placeholder });
+      var btn = h('button', { class: 'ct-btn small', type: 'button', text: 'Add' });
+      var go = function () {
+        var v = add.value.trim(); if (!v) return;
+        var list = cfg()[key];
+        if (list.some(function (x) { return sameName(x, v); })) { toast('That’s already in the list.'); return; }
+        list.push(v); afterCfgChange(true);
+        var again = $('new-' + key); if (again) again.focus();
+      };
+      btn.addEventListener('click', go);
+      add.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); go(); } });
+      box.append(h('div', { class: 'ct-lirow add' }, add, btn));
+    }
+  }
+  function editable() { if (!state.cfg || state.readOnly || !sb) { toast(state.readOnly ? 'Log in as the owner to change the lists.' : 'Lists are still loading.'); return false; } return true; }
+  function piecesWord(n) { return n + ' logged ' + (n === 1 ? 'piece' : 'pieces'); }
+
+  function addCategory() {
+    if (!editable()) return;
+    var inp = $('newCat'); var v = inp.value.trim(); if (!v) return;
+    var C = cfg();
+    if (C.categories.some(function (c) { return sameName(c.name, v); })) { toast('That category already exists.'); return; }
+    C.categories.push({ name: v, subs: [] });
+    inp.value = '';
+    afterCfgChange(true);
+    var ni = $('newsub-' + (C.categories.length - 1)); if (ni) ni.focus();
+  }
+  function renameCategory(oldName, inp) {
+    if (!editable()) { inp.value = oldName; return; }
+    var C = cfg(); var c = findCat(oldName); var v = inp.value.trim();
+    if (!c) { renderLists(true); return; }
+    if (v === oldName) return;
+    if (!v) { inp.value = oldName; toast('A category needs a name.'); return; }
+    if (C.categories.some(function (x) { return x !== c && sameName(x.name, v); })) { inp.value = oldName; toast('That category already exists.'); return; }
+    c.name = v;
+    afterCfgChange(false);
+    propagate({ category: oldName }, { category: v }).then(function (n) { toast(n ? 'Renamed. Updated ' + piecesWord(n) + '.' : 'Renamed.'); });
+  }
+  function removeCategory(name) {
+    if (!editable()) return;
+    var C = cfg(); C.categories = C.categories.filter(function (c) { return c.name !== name; }); state.cfg = C;
+    afterCfgChange(true); toast('Removed ' + name + '. Pieces already logged keep it.');
+  }
+  function addSub(catName, raw, funnel, ci) {
+    if (!editable()) return;
+    var c = findCat(catName); var v = raw.trim(); if (!c || !v) return;
+    if (c.subs.some(function (s) { return sameName(s.name, v); })) { toast('That subcategory already exists.'); return; }
+    c.subs.push({ name: v, funnel: FUNNELS.indexOf(funnel) >= 0 ? funnel : 'TOFU' });
+    afterCfgChange(true);
+    var ni = $('newsub-' + ci); if (ni) ni.focus();
+  }
+  function renameSub(catName, oldName, inp) {
+    if (!editable()) { inp.value = oldName; return; }
+    var c = findCat(catName); var v = inp.value.trim();
+    var s = c && c.subs.filter(function (x) { return x.name === oldName; })[0];
+    if (!s) { renderLists(true); return; }
+    if (v === oldName) return;
+    if (!v) { inp.value = oldName; toast('A subcategory needs a name.'); return; }
+    if (c.subs.some(function (x) { return x !== s && sameName(x.name, v); })) { inp.value = oldName; toast('That subcategory already exists.'); return; }
+    s.name = v;
+    afterCfgChange(false);
+    propagate({ category: catName, sub: oldName }, { sub: v }).then(function (n) { toast(n ? 'Renamed. Updated ' + piecesWord(n) + '.' : 'Renamed.'); });
+  }
+  function setSubFunnel(catName, subName, f) {
+    if (!editable()) return;
+    var c = findCat(catName); var s = c && c.subs.filter(function (x) { return x.name === subName; })[0];
+    if (!s) return; s.funnel = f; afterCfgChange(false);
+    toast('Saved. New pieces in ' + subName + ' start as ' + f + '.');
+  }
+  function removeSub(catName, subName) {
+    if (!editable()) return;
+    var c = findCat(catName); if (!c) return;
+    c.subs = c.subs.filter(function (s) { return s.name !== subName; });
+    afterCfgChange(true); toast('Removed ' + subName + '. Pieces already logged keep it.');
+  }
+  function renameSimple(key, field, oldVal, inp) {
+    if (!editable()) { inp.value = oldVal; return; }
+    var list = cfg()[key]; var i = list.indexOf(oldVal); var v = inp.value.trim();
+    if (i < 0) { renderLists(true); return; }
+    if (v === oldVal) return;
+    if (!v) { inp.value = oldVal; toast('It needs a name.'); return; }
+    if (list.some(function (x, j) { return j !== i && sameName(x, v); })) { inp.value = oldVal; toast('That’s already in the list.'); return; }
+    list[i] = v;
+    afterCfgChange(false);
+    var patch = {}; patch[field] = v;
+    var where = {}; where[field] = oldVal;
+    propagate(where, patch).then(function (n) { toast(n ? 'Renamed. Updated ' + piecesWord(n) + '.' : 'Renamed.'); });
+  }
+  function removeSimple(key, val) {
+    if (!editable()) return;
+    var C = cfg(); C[key] = C[key].filter(function (x) { return x !== val; }); state.cfg = C;
+    afterCfgChange(true); toast('Removed ' + val + '. Pieces already logged keep it.');
+  }
+
+  /* ---------- Editor ---------- */
+  function fillSelect(sel, placeholder, values, current) {
+    var opts = [opt('', placeholder)].concat(values.map(function (v) { return opt(v[0], v[1]); }));
+    if (current && !values.some(function (v) { return v[0] === current; })) opts.push(opt(current, current + ' (not in lists)'));
+    sel.replaceChildren.apply(sel, opts);
+    sel.value = current || '';
+  }
+  function fillCat(current) { fillSelect($('f_cat'), 'Choose category', cfg().categories.map(function (c) { return [c.name, c.name]; }), current); }
+  function fillSub(cat, current) {
+    var c = findCat(cat);
+    fillSelect($('f_sub'), c ? 'Choose subcategory' : (cat ? 'No subcategories' : 'Pick a category first'),
+      c ? c.subs.map(function (s) { return [s.name, s.name + ' · ' + s.funnel]; }) : [], current);
+  }
+  var lastFocus = null;
+  function openEditor(id) {
+    var e = id ? state.entries.filter(function (x) { return x.id === id; })[0] : null;
+    if (id && !e) return;
+    if (!id && (state.readOnly || !sb)) { toast(state.readOnly ? 'Log in as the owner to add content.' : 'The tracker isn’t connected to its database yet.'); return; }
+    state.editingId = id || null;
+    lastFocus = document.activeElement;
+    $('sheetTitle').textContent = e ? (state.readOnly ? 'Content details' : 'Edit content') : 'Add content';
+    e = e || normEntry(null, { status: 'Idea' });
+    $('f_title').value = e.title; $('f_value').value = e.value; $('f_aud').value = e.audience;
+    fillCat(e.category); fillSub(e.category, e.sub);
+    $('f_funnel').value = e.funnel || '';
+    fillSelect($('f_source'), 'Choose source', usedSourcesForSelect(), e.source);
+    $('f_srcTitle').value = e.sourceTitle;
+    $('f_links').value = e.links.join('\n');
+    fillSelect($('f_status'), 'Status', STATUSES.map(function (s) { return [s, s]; }), e.status);
+    $('f_posted').value = e.postedOn;
+    METRICS.forEach(function (m) { $('f_' + m[0]).value = e[m[0]] == null ? '' : String(e[m[0]]); });
+    $('f_notes').value = e.notes;
+    $('formErr').textContent = '';
+    var ro = state.readOnly;
+    Array.prototype.forEach.call($('form').querySelectorAll('input, select, textarea'), function (el) { el.disabled = ro; });
+    $('saveBtn').hidden = ro; $('delBtn').hidden = ro || !state.editingId;
+    resetDel();
+    $('overlay').hidden = false;
+    document.body.style.overflow = 'hidden';
+    setTimeout(function () { (ro ? $('closeSheet') : $('f_title')).focus(); }, 0);
+  }
+  function usedSourcesForSelect() { return cfg().sources.map(function (s) { return [s, s]; }); }
+  function closeEditor() {
+    $('overlay').hidden = true; document.body.style.overflow = '';
+    state.editingId = null;
+    if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+  }
+  var delTimer = null;
+  function resetDel() { clearTimeout(delTimer); var b = $('delBtn'); b.classList.remove('confirming'); b.textContent = 'Delete'; }
+  function onDelete() {
+    var b = $('delBtn');
+    if (!b.classList.contains('confirming')) {
+      b.classList.add('confirming'); b.textContent = 'Tap again to delete';
+      delTimer = setTimeout(resetDel, 3500); return;
+    }
+    var id = state.editingId; if (!id || !sb) return;
+    b.disabled = true;
+    write(function () { return sb.from('entries').delete().eq('id', id).select('id'); }, true).then(function () {
+      closeEditor(); toast('Deleted.');
+    }, handleWriteError).finally(function () { b.disabled = false; resetDel(); });
+  }
+  function onSave(ev) {
+    ev.preventDefault();
+    if (state.readOnly || !sb) return;
+    var existing = state.editingId ? state.entries.filter(function (x) { return x.id === state.editingId; })[0] : null;
+    var now = new Date().toISOString();
+    var data = {
+      title: $('f_title').value.trim(),
+      value: $('f_value').value.trim(),
+      audience: $('f_aud').value.trim(),
+      category: $('f_cat').value,
+      sub: $('f_sub').value,
+      funnel: $('f_funnel').value,
+      source: $('f_source').value,
+      sourceTitle: $('f_srcTitle').value.trim(),
+      links: $('f_links').value.split(/\n+/).map(function (s) { return s.trim(); }).filter(Boolean),
+      status: $('f_status').value || 'Idea',
+      postedOn: $('f_posted').value,
+      notes: $('f_notes').value.trim(),
+      createdAt: existing && existing.createdAt ? existing.createdAt : now,
+      updatedAt: now
+    };
+    METRICS.forEach(function (m) { data[m[0]] = num($('f_' + m[0]).value); });
+    if (!data.title && !data.value) { $('formErr').textContent = 'Add a content title or the topic description so you can find this later.'; $('f_title').focus(); return; }
+    if (data.status === 'Posted' && !data.postedOn) data.postedOn = todayISO();
+    // Only the columns this page knows are sent, so any column added to the database later is never overwritten.
+    var row = toRow(data);
+    var editId = state.editingId;
+    var btn = $('saveBtn'); btn.disabled = true;
+    write(function () {
+      return editId ? sb.from('entries').update(row).eq('id', editId).select('id') : sb.from('entries').insert(row).select('id');
+    }, true).then(function () {
+      var wasNew = !state.editingId;
+      closeEditor(); toast(wasNew ? 'Added to your tracker.' : 'Saved.');
+    }, function (e) { handleWriteError(e); $('formErr').textContent = 'This piece wasn’t saved yet. Your text is still here.'; }).finally(function () { btn.disabled = false; });
+  }
+
+  /* ---------- Tabs ---------- */
+  function showTab(t) {
+    if (['log', 'mix', 'lists'].indexOf(t) < 0) t = 'log';
+    state.tab = t;
+    ['log', 'mix', 'lists'].forEach(function (k) {
+      $('view-' + k).hidden = k !== t;
+      $('tab-' + k).setAttribute('aria-selected', String(k === t));
+    });
+    if (t === 'lists') { if (listsDirty) renderLists(true); else sizeNames(); }
+  }
+
+  function renderAll() {
+    renderFilterOptions();
+    renderLog();
+    renderMix();
+    maybeRenderLists();
+  }
+
+  /* ---------- Data ---------- */
+  var reloadTimer = null, loading = false, reloadAgain = false, firstLoad = null;
+  function scheduleReload() { clearTimeout(reloadTimer); reloadTimer = setTimeout(reload, 250); }
+  function reload() {
+    if (!sb) return;
+    if (loading) { reloadAgain = true; return; }
+    loading = true;
+    Promise.all([
+      sb.from('tracker_config').select('data').eq('id', 'options').maybeSingle(),
+      sb.from('entries').select('*').order('created_at', { ascending: false }).range(0, 4999)
+    ]).then(function (res) {
+      check(res[0]); check(res[1]);
+      if (!cfgWriting) state.cfg = normCfg(res[0].data ? res[0].data.data : {});
+      state.entries = (res[1].data || []).map(fromRow);
+      state.entriesLoaded = true;
+      clearTimeout(firstLoad);
+      if (state.conn !== 'live') { state.conn = 'live'; banner(''); }
+      renderAll(); updateSync();
+    }).catch(function () {
+      clearTimeout(firstLoad);
+      state.conn = state.entriesLoaded ? 'stale' : 'error';
+      updateSync();
+      banner(state.entriesLoaded ? 'Can’t reach the database right now, so what you see may be out of date. It will catch up on its own.' : 'Can’t load the tracker right now. Check your connection and reload the page.');
+      startPolling();
+    }).finally(function () {
+      loading = false;
+      if (reloadAgain) { reloadAgain = false; scheduleReload(); }
+    });
+  }
+  var pollTimer = null;
+  function startPolling() { if (!pollTimer) pollTimer = setInterval(function () { if (!document.hidden) reload(); }, 30000); }
+
+  function start() {
+    state.conn = 'connecting'; updateSync();
+    firstLoad = setTimeout(function () {
+      if (state.conn === 'connecting') { state.conn = 'stale'; updateSync(); banner('Can’t reach the database yet. Check your connection. It will load on its own once it can.'); }
+    }, 10000);
+    reload();
+    // Live updates: every open copy of the page reloads when anything changes.
+    try {
+      sb.channel('content-tracker')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, scheduleReload)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'tracker_config' }, scheduleReload)
+        .subscribe(function (status) { if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') startPolling(); });
+    } catch (_) { startPolling(); }
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) scheduleReload(); });
+
+    sb.auth.getSession().then(function (res) { onAuth(res && res.data ? res.data.session : null); }, function () { onAuth(null); });
+    sb.auth.onAuthStateChange(function (_event, session) { onAuth(session); });
+  }
+
+  var authSeq = 0;
+  function onAuth(session) {
+    state.session = session || null;
+    var seq = ++authSeq;
+    $('loginBtn').hidden = !!session;
+    $('logoutBtn').hidden = !session;
+    if (!session) { setAdmin(false); return; }
+    sb.rpc('is_admin').then(function (res) {
+      if (seq !== authSeq) return;
+      var ok = !res.error && res.data === true;
+      setAdmin(ok);
+      if (!ok) toast('This account can browse the tracker but not change it.');
+    }, function () { if (seq === authSeq) setAdmin(false); });
+  }
+  function setAdmin(on) {
+    if (state.isAdmin === on && state.readOnly === !on) return;
+    state.isAdmin = on;
+    if (!on && !$('overlay').hidden) closeEditor();
+    setReadOnly(!on);
+  }
+
+  function openLogin() {
+    if (!sb) { toast('The tracker isn’t connected to its database yet.'); return; }
+    $('loginErr').textContent = '';
+    $('loginOverlay').hidden = false;
+    document.body.style.overflow = 'hidden';
+    setTimeout(function () { $('l_email').focus(); }, 0);
+  }
+  function closeLogin() {
+    $('loginOverlay').hidden = true;
+    document.body.style.overflow = '';
+    $('l_pass').value = '';
+    $('loginBtn').focus();
+  }
+  function onLogin(ev) {
+    ev.preventDefault();
+    var email = $('l_email').value.trim(), pass = $('l_pass').value;
+    if (!email || !pass) { $('loginErr').textContent = 'Enter your email and password.'; return; }
+    var btn = $('loginSubmit'); btn.disabled = true; $('loginErr').textContent = '';
+    sb.auth.signInWithPassword({ email: email, password: pass }).then(function (res) {
+      if (res.error) { $('loginErr').textContent = 'That email and password don’t match. Try again.'; return; }
+      closeLogin(); toast('Logged in.');
+    }, function () { $('loginErr').textContent = 'Couldn’t reach the login service. Check your connection and try again.'; })
+      .finally(function () { btn.disabled = false; });
+  }
+
+  function noData() {
+    state.conn = 'off'; updateSync();
+    banner('This tracker isn’t connected to its database yet. Add the Supabase project URL and key to config.js.');
+    $('loginBtn').hidden = true;
+    renderSummary(); renderLists(true);
+  }
+
+  /* ---------- Wire up ---------- */
+  document.querySelectorAll('.ct-tab').forEach(function (b) {
+    b.addEventListener('click', function () { var t = b.getAttribute('data-tab'); if (location.hash !== '#' + t) location.hash = t; else showTab(t); });
+  });
+  window.addEventListener('hashchange', function () { showTab(location.hash.slice(1)); });
+  window.addEventListener('resize', function () { if (state.tab === 'lists') sizeNames(); });
+  $('addBtn').addEventListener('click', function () { openEditor(null); });
+  ['q'].forEach(function (id) { $(id).addEventListener('input', renderLog); });
+  ['fCat', 'fFunnel', 'fSource', 'fAud', 'fStatus', 'sort'].forEach(function (id) { $(id).addEventListener('change', renderLog); });
+  $('clearF').addEventListener('click', clearFilters);
+  $('copyCsv').addEventListener('click', function () {
+    var csv = buildCSV(filteredEntries());
+    var fallback = function () { $('csvText').value = csv; $('csvBox').hidden = false; $('csvText').focus(); $('csvText').select(); };
+    try {
+      navigator.clipboard.writeText(csv).then(function () { $('csvBox').hidden = true; toast('Copied ' + filteredEntries().length + ' rows. Paste into any spreadsheet.'); }, fallback);
+    } catch (_) { fallback(); }
+  });
+  ['range', 'countMode'].forEach(function (id) { $(id).addEventListener('change', renderMix); });
+  $('perfBy').addEventListener('change', renderMix);
+  $('addCat').addEventListener('click', addCategory);
+  $('newCat').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); addCategory(); } });
+  $('view-lists').addEventListener('focusout', function () {
+    setTimeout(function () { if (listsDirty && !$('view-lists').contains(document.activeElement)) renderLists(true); }, 0);
+  });
+  $('f_cat').addEventListener('change', function () { fillSub($('f_cat').value, ''); });
+  $('f_sub').addEventListener('change', function () { var f = subFunnel($('f_cat').value, $('f_sub').value); if (f) $('f_funnel').value = f; });
+  $('f_status').addEventListener('change', function () { if ($('f_status').value === 'Posted' && !$('f_posted').value) $('f_posted').value = todayISO(); });
+  $('form').addEventListener('submit', onSave);
+  $('cancelBtn').addEventListener('click', closeEditor);
+  $('closeSheet').addEventListener('click', closeEditor);
+  $('delBtn').addEventListener('click', onDelete);
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape') return;
+    if (!$('overlay').hidden) closeEditor();
+    else if (!$('loginOverlay').hidden) closeLogin();
+  });
+  $('loginBtn').addEventListener('click', openLogin);
+  $('logoutBtn').addEventListener('click', function () { if (sb) sb.auth.signOut().then(function () { toast('Logged out.'); }); });
+  $('loginForm').addEventListener('submit', onLogin);
+  $('loginCancel').addEventListener('click', closeLogin);
+  $('loginClose').addEventListener('click', closeLogin);
+
+  var THEME_KEY = 'ct-theme';
+  function applyTheme(v) {
+    var root = document.documentElement;
+    if (v === 'light' || v === 'dark') root.setAttribute('data-ct-theme', v); else { root.removeAttribute('data-ct-theme'); v = 'auto'; }
+    Array.prototype.forEach.call(document.querySelectorAll('.ct-theme button'), function (b) {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-choice') === v));
+    });
+  }
+  var savedTheme = 'auto';
+  try { savedTheme = localStorage.getItem(THEME_KEY) || 'auto'; } catch (_) {}
+  applyTheme(savedTheme);
+  Array.prototype.forEach.call(document.querySelectorAll('.ct-theme button'), function (b) {
+    b.addEventListener('click', function () {
+      var v = b.getAttribute('data-theme-choice');
+      applyTheme(v);
+      try { localStorage.setItem(THEME_KEY, v); } catch (_) {}
+    });
+  });
+
+  showTab(location.hash.slice(1) || 'log');
+  updateSync();
+  renderFilterOptions();
+  renderLog();
+  renderMix();
+  renderLists(true);
+
+  if (!sb) noData(); else start();
+})();
+</script>
+</body>
+</html>
